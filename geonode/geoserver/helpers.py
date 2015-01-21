@@ -677,11 +677,11 @@ def set_attributes(layer, overwrite=False):
 
     # Add new layer attributes if they don't already exist
     if attribute_map is not None:
-        iter = len(Attribute.objects.filter(layer=layer)) + 1
+        iter = len(Attribute.objects.filter(resource=layer)) + 1
         for field, ftype in attribute_map:
             if field is not None:
                 la, created = Attribute.objects.get_or_create(
-                    layer=layer, attribute=field, attribute_type=ftype)
+                    resource=layer, attribute=field, attribute_type=ftype)
                 if created:
                     if is_layer_attribute_aggregable(
                             layer.storeType,

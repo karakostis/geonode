@@ -56,13 +56,13 @@ class AttributeAdmin(admin.ModelAdmin):
     list_display_links = ('id',)
     list_display = (
         'id',
-        'layer',
+        'resource',
         'attribute',
         'description',
         'attribute_label',
         'attribute_type',
         'display_order')
-    list_filter = ('layer', 'attribute_type')
+    list_filter = ('resource', 'attribute_type')
     search_fields = ('attribute', 'attribute_label',)
 
 

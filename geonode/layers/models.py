@@ -272,8 +272,8 @@ class Attribute(models.Model):
        to other servers, and lets users customize attribute titles,
        sort order, and visibility.
     """
-    layer = models.ForeignKey(
-        Layer,
+    resource = models.ForeignKey(
+        ResourceBase,
         blank=False,
         null=False,
         unique=False,
