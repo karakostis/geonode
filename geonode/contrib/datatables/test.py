@@ -14,6 +14,7 @@ from geoserver.store import datastore_from_index
 import psycopg2
 from psycopg2.extensions import QuotedString
 
+from django.utils.text import slugify
 from django.core.files import File
 
 from geonode.layers.models import Layer, Attribute
@@ -22,7 +23,9 @@ from geonode.geoserver.helpers import set_attributes
 
 def process_file(csv_filename):
 
-    table_name = os.path.splitext(os.path.basename(csv_filename))[0]
+    table_name = slugify(unicode(os.path.splitext(os.path.basename(csv_filename))[0])).replace('-','_')
+    if table_name[:1].isdigit():
+        table_name = 'x' + table_name
 
     f = open(csv_filename, 'rb')
     
@@ -77,63 +80,64 @@ def process_file(csv_filename):
     
     return table_name
 
+def setup_join():
+    dt = DataTable.objects.get(title='ca_tracts_pop')
+    layer = Layer.objects.get(typename="geonode:tl_2013_06_tract")
+
+    layer_attribute = layer.attributes.get(resource=layer, attribute_label="Geoid")
+    table_attribute = dt.attributes.get(resource=dt,attribute_label="GEO.id2")
+
+    layer_name = layer.typename.split(':')[1]
+    view_name = "join_%s_%s" % (layer_name, dt.table_name)
+    print view_name
+
+    view_sql = 'create materialized view %s as select %s.*, %s.* from %s inner join %s on %s."%s" = %s."%s";' %  (view_name, layer_name, dt.table_name, layer_name, dt.table_name, layer_name, layer_attribute.attribute, dt.table_name, table_attribute.attribute)
+    double_view_name = "view_%s" % view_name
+    double_view_sql = "create view %s as select * from %s" % (double_view_name, view_name)
+    tj, created = TableJoin.objects.get_or_create(source_layer=layer,datatable=dt, table_attribute=table_attribute, layer_attribute=layer_attribute, view_name=double_view_name)
+    tj.view_sql = view_sql
+    conn = psycopg2.connect("dbname=geonode user=geonode")
+    cur = conn.cursor()
+    cur.execute('drop view if exists %s;' % double_view_name) 
+    cur.execute('drop materialized view if exists %s;' % view_name) 
+    cur.execute(view_sql)
+    cur.execute(double_view_sql)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    cat = Catalog('http://localhost:8080/geoserver/rest')
+    workspace = cat.get_workspace("geonode")
+    ds_list = cat.get_xml(workspace.datastore_url)
+    datastores = [datastore_from_index(cat, workspace, n) for n in ds_list.findall("dataStore")]
+    ds = None
+    for datastore in datastores:
+        if datastore.name == "datastore":
+            ds = datastore
+    ft = cat.publish_featuretype(double_view_name, ds, layer.srid, srs=layer.srid)
+    cat.save(ft)
+
+    layer, created = Layer.objects.get_or_create(name=view_name, defaults={
+        "workspace": workspace.name,
+        "store": ds.name,
+        "storeType": ds.resource_type,
+        "typename": "%s:%s" % (workspace.name.encode('utf-8'), ft.name.encode('utf-8')),
+        "title": ft.title or 'No title provided',
+        "abstract": ft.abstract or 'No abstract provided',
+        "uuid": str(uuid.uuid4()),
+        "bbox_x0": Decimal(ft.latlon_bbox[0]),
+        "bbox_x1": Decimal(ft.latlon_bbox[1]),
+        "bbox_y0": Decimal(ft.latlon_bbox[2]),
+        "bbox_y1": Decimal(ft.latlon_bbox[3])
+    })
+    set_attributes(layer, overwrite=True)
+    print layer
+    tj.join_layer = layer
+    tj.save()
+    print tj
+
 csv_list = glob.glob('scratch/*.csv')
 for csv in csv_list:
     print csv
     table_name = process_file(csv)
     print table_name
-
-dt = DataTable.objects.get(title='ca_tracts_pop')
-layer = Layer.objects.get(typename="geonode:tl_2013_06_tract")
-
-layer_attribute = layer.attributes.get(resource=layer, attribute_label="Geoid")
-table_attribute = dt.attributes.get(resource=dt,attribute_label="GEO.id2")
-
-layer_name = layer.typename.split(':')[1]
-view_name = "join_%s_%s" % (layer_name, dt.table_name)
-print view_name
-
-view_sql = 'create materialized view %s as select %s.*, %s.* from %s inner join %s on %s."%s" = %s."%s";' %  (view_name, layer_name, dt.table_name, layer_name, dt.table_name, layer_name, layer_attribute.attribute, dt.table_name, table_attribute.attribute)
-double_view_name = "view_%s" % view_name
-double_view_sql = "create view %s as select * from %s" % (double_view_name, view_name)
-tj, created = TableJoin.objects.get_or_create(source_layer=layer,datatable=dt, table_attribute=table_attribute, layer_attribute=layer_attribute, view_name=double_view_name)
-tj.view_sql = view_sql
-conn = psycopg2.connect("dbname=geonode user=geonode")
-cur = conn.cursor()
-cur.execute('drop view if exists %s;' % double_view_name) 
-cur.execute('drop materialized view if exists %s;' % view_name) 
-cur.execute(view_sql)
-cur.execute(double_view_sql)
-conn.commit()
-cur.close()
-conn.close()
-
-cat = Catalog('http://localhost:8080/geoserver/rest')
-workspace = cat.get_workspace("geonode")
-ds_list = cat.get_xml(workspace.datastore_url)
-datastores = [datastore_from_index(cat, workspace, n) for n in ds_list.findall("dataStore")]
-ds = None
-for datastore in datastores:
-    if datastore.name == "datastore":
-        ds = datastore
-ft = cat.publish_featuretype(double_view_name, ds, layer.srid, srs=layer.srid)
-cat.save(ft)
-
-layer, created = Layer.objects.get_or_create(name=view_name, defaults={
-    "workspace": workspace.name,
-    "store": ds.name,
-    "storeType": ds.resource_type,
-    "typename": "%s:%s" % (workspace.name.encode('utf-8'), ft.name.encode('utf-8')),
-    "title": ft.title or 'No title provided',
-    "abstract": ft.abstract or 'No abstract provided',
-    "uuid": str(uuid.uuid4()),
-    "bbox_x0": Decimal(ft.latlon_bbox[0]),
-    "bbox_x1": Decimal(ft.latlon_bbox[1]),
-    "bbox_y0": Decimal(ft.latlon_bbox[2]),
-    "bbox_y1": Decimal(ft.latlon_bbox[3])
-})
-set_attributes(layer, overwrite=True)
-print layer
-tj.join_layer = layer
-tj.save()
-print tj
