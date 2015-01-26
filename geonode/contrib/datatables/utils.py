@@ -26,6 +26,7 @@ logger = logging.getLogger('geonode.contrib.datatables.utils')
 
 def process_file(instance):
     csv_filename = instance.uploaded_file.path
+    print csv_filename
     table_name = slugify(unicode(os.path.splitext(os.path.basename(csv_filename))[0])).replace('-','_')
     if table_name[:1].isdigit():
         table_name = 'x' + table_name
@@ -80,18 +81,16 @@ def process_file(instance):
     conn.close()
     f.close()
     
-    return table_name
+    return instance 
 
-def setup_join():
-    dt = DataTable.objects.get(title='ca_tracts_pop')
-    layer = Layer.objects.get(typename="geonode:tl_2013_06_tract")
-
-    layer_attribute = layer.attributes.get(resource=layer, attribute_label="Geoid")
-    table_attribute = dt.attributes.get(resource=dt,attribute_label="GEO.id2")
+def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
+    dt = DataTable.objects.get(table_name=table_name)
+    layer = Layer.objects.get(typename=layer_typename)
+    table_attribute = dt.attributes.get(resource=dt,attribute=table_attribute)
+    layer_attribute = layer.attributes.get(resource=layer, attribute=layer_attribute)
 
     layer_name = layer.typename.split(':')[1]
     view_name = "join_%s_%s" % (layer_name, dt.table_name)
-    print view_name
 
     view_sql = 'create materialized view %s as select %s.*, %s.* from %s inner join %s on %s."%s" = %s."%s";' %  (view_name, layer_name, dt.table_name, layer_name, dt.table_name, layer_name, layer_attribute.attribute, dt.table_name, table_attribute.attribute)
     double_view_name = "view_%s" % view_name
@@ -133,7 +132,6 @@ def setup_join():
         "bbox_y1": Decimal(ft.latlon_bbox[3])
     })
     set_attributes(layer, overwrite=True)
-    print layer
     tj.join_layer = layer
     tj.save()
-    print tj
+    return tj 
