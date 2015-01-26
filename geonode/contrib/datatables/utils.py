@@ -3,6 +3,7 @@ import os
 import glob
 import uuid
 import csvkit
+import logging
 from decimal import Decimal
 from csvkit import sql
 from csvkit import table
@@ -21,25 +22,26 @@ from geonode.layers.models import Layer, Attribute
 from geonode.contrib.datatables.models import DataTable, TableJoin
 from geonode.geoserver.helpers import set_attributes
 
-def process_file(csv_filename):
+logger = logging.getLogger('geonode.contrib.datatables.utils')
 
+def process_file(instance):
+    csv_filename = instance.uploaded_file.path
     table_name = slugify(unicode(os.path.splitext(os.path.basename(csv_filename))[0])).replace('-','_')
     if table_name[:1].isdigit():
         table_name = 'x' + table_name
 
+    instance.table_name = table_name
+    instance.save()
     f = open(csv_filename, 'rb')
     
     csv_table = table.Table.from_csv(f,name=table_name)
 
-    dt, created = DataTable.objects.get_or_create(title=table_name, table_name=table_name)
     csv_file = File(f)
-    dt.uploaded_file.save(csv_filename, csv_file)
-    dt.save()
     f.close()
     
 
     for column in csv_table: 
-        attribute, created = Attribute.objects.get_or_create(resource=dt, 
+        attribute, created = Attribute.objects.get_or_create(resource=instance, 
             attribute=column.name, 
             attribute_label=column.name, 
             attribute_type=column.type.__name__, 
@@ -48,8 +50,8 @@ def process_file(csv_filename):
     # Create Database Table
     sql_table = sql.make_table(csv_table,table_name)
     create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
-    dt.create_table_sql = create_table_sql
-    dt.save()
+    instance.create_table_sql = create_table_sql
+    instance.save()
     conn = psycopg2.connect("dbname=geonode user=geonode")
     cur = conn.cursor()
     cur.execute('drop table if exists %s CASCADE;' % table_name) 
@@ -135,9 +137,3 @@ def setup_join():
     tj.join_layer = layer
     tj.save()
     print tj
-
-csv_list = glob.glob('scratch/*.csv')
-for csv in csv_list:
-    print csv
-    table_name = process_file(csv)
-    print table_name
