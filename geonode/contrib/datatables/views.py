@@ -9,7 +9,7 @@ from django.utils.text import slugify
 
 from .models import DataTable
 from .forms import UploadDataTableForm
-from .utils import process_file, setup_join
+from .utils import process_csv_file, setup_join
 
 @login_required
 def datatable_upload_api(request):
@@ -21,7 +21,7 @@ def datatable_upload_api(request):
             table_name = slugify(unicode(os.path.splitext(os.path.basename(request.FILES['file'].name))[0])).replace('-','_')
             instance = DataTable(uploaded_file=request.FILES['file'], table_name=table_name, title=table_name)
             instance.save()
-            dt = process_file(instance)
+            dt = process_csv_file(instance)
             return_dict = {
                 'datatable_id': dt.pk,
                 'datatable_name': dt.table_name

@@ -11,22 +11,26 @@ from csvkit import CSVKitWriter
 from csvkit.cli import CSVKitUtility
 from geoserver.catalog import Catalog
 from geoserver.store import datastore_from_index
+from geonode.geoserver.helpers import ogc_server_settings
 
 import psycopg2
 from psycopg2.extensions import QuotedString
 
 from django.utils.text import slugify
 from django.core.files import File
+from django.conf import settings
 
 from geonode.layers.models import Layer, Attribute
 from geonode.contrib.datatables.models import DataTable, TableJoin
 from geonode.geoserver.helpers import set_attributes
 
+_user = settings.OGC_SERVER['default']['USER']
+_password = settings.OGC_SERVER['default']['PASSWORD']
+
 logger = logging.getLogger('geonode.contrib.datatables.utils')
 
-def process_file(instance):
+def process_csv_file(instance):
     csv_filename = instance.uploaded_file.path
-    print csv_filename
     table_name = slugify(unicode(os.path.splitext(os.path.basename(csv_filename))[0])).replace('-','_')
     if table_name[:1].isdigit():
         table_name = 'x' + table_name
@@ -39,7 +43,6 @@ def process_file(instance):
 
     csv_file = File(f)
     f.close()
-    
 
     for column in csv_table: 
         attribute, created = Attribute.objects.get_or_create(resource=instance, 
@@ -53,21 +56,42 @@ def process_file(instance):
     create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
     instance.create_table_sql = create_table_sql
     instance.save()
-    conn = psycopg2.connect("dbname=geonode user=geonode")
-    cur = conn.cursor()
-    cur.execute('drop table if exists %s CASCADE;' % table_name) 
-    cur.execute(create_table_sql)
-    conn.commit()
-    cur.close()
-    conn.close()
-    
+
+    import psycopg2
+    db = ogc_server_settings.datastore_db
+    conn = psycopg2.connect(
+        "dbname='" +
+        db['NAME'] +
+        "' user='" +
+        db['USER'] +
+        "'  password='" +
+        db['PASSWORD'] +
+        "' port=" +
+        db['PORT'] +
+        " host='" +
+        db['HOST'] +
+        "'")
+    try:
+        cur = conn.cursor()
+        cur.execute('drop table if exists %s CASCADE;' % table_name) 
+        cur.execute(create_table_sql)
+        conn.commit()
+    except Exception as e:
+        logger.error(
+            "Error Creating table %s:%s",
+            instance.name,
+            str(e))
+    finally:
+        conn.close()
+
     # Copy Data to postgres
-    connection_string = "postgresql://geonode:geonode@localhost:5432/geonode"
+    connection_string = "postgresql://%s:%s@%s:%s/%s" % (db['USER'], db['PASSWORD'], db['HOST'], db['PORT'], db['NAME'])
+    print connection_string
     try:
         engine, metadata = sql.get_connection(connection_string)
     except ImportError:
         print "Unable to connect"
-        return
+        return None
 
     conn = engine.connect()
     trans = conn.begin()
@@ -97,18 +121,38 @@ def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
     double_view_sql = "create view %s as select * from %s" % (double_view_name, view_name)
     tj, created = TableJoin.objects.get_or_create(source_layer=layer,datatable=dt, table_attribute=table_attribute, layer_attribute=layer_attribute, view_name=double_view_name)
     tj.view_sql = view_sql
-    conn = psycopg2.connect("dbname=geonode user=geonode")
-    cur = conn.cursor()
-    cur.execute('drop view if exists %s;' % double_view_name) 
-    cur.execute('drop materialized view if exists %s;' % view_name) 
-    cur.execute(view_sql)
-    cur.execute(double_view_sql)
-    conn.commit()
-    cur.close()
-    conn.close()
 
-    cat = Catalog('http://localhost:8080/geoserver/rest')
-    workspace = cat.get_workspace("geonode")
+    db = ogc_server_settings.datastore_db
+    conn = psycopg2.connect(
+        "dbname='" +
+        db['NAME'] +
+        "' user='" +
+        db['USER'] +
+        "'  password='" +
+        db['PASSWORD'] +
+        "' port=" +
+        db['PORT'] +
+        " host='" +
+        db['HOST'] +
+        "'")
+    try:
+        cur = conn.cursor()
+        cur.execute('drop view if exists %s;' % double_view_name) 
+        cur.execute('drop materialized view if exists %s;' % view_name) 
+        cur.execute(view_sql)
+        cur.execute(double_view_sql)
+        conn.commit()
+    except Exception as e:
+        logger.error(
+            "Error Creating table %s:%s",
+            instance.name,
+            str(e))
+    finally:
+        conn.close()
+
+    cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest",
+                      _user, _password)
+    workspace = cat.get_workspace(settings.DEFAULT_WORKSPACE)
     ds_list = cat.get_xml(workspace.datastore_url)
     datastores = [datastore_from_index(cat, workspace, n) for n in ds_list.findall("dataStore")]
     ds = None
@@ -134,4 +178,4 @@ def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
     set_attributes(layer, overwrite=True)
     tj.join_layer = layer
     tj.save()
-    return tj 
+    return tj
