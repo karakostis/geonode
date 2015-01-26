@@ -9,7 +9,7 @@ c = Client()
 c.login(username='admin', password='admin')
 
 with open('scratch/ca_tracts_pop.csv') as fp:
-    response = c.post('/datatables/upload/api/', {'title': 'test', 'file': fp})
+    response = c.post('/datatables/api/upload', {'title': 'test', 'file': fp})
     resp_dict = json.loads(response.content)
     datatable_name = resp_dict['datatable_name']
 
