@@ -1,35 +1,51 @@
 import json
-from django.test import Client
-from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
+import requests
+#from django.contrib.auth import get_user_model
+#from django.core.urlresolvers import reverse
 
-from geonode.layers.utils import file_upload
+client = requests.session()
 
-c = Client()
-c.login(username='admin', password='admin')
+base_url = "http://23.23.180.177:8000"
+login_url = base_url + "/account/login/"
 
-with open('scratch/ca_tracts_pop.csv') as fp:
-    response = c.post('/datatables/api/upload', {'title': 'test', 'file': fp})
-    resp_dict = json.loads(response.content)
-    datatable_name = resp_dict['datatable_name']
+# Retrieve the CSRF token first
+client.get(login_url)  # sets the cookie
+csrftoken = client.cookies['csrftoken']
 
+login_data = dict(username="admin", password="admin", csrfmiddlewaretoken=csrftoken)
+r = client.post(login_url, data=login_data, headers={"Referer": "test-client"})
+print r
 
-admin = get_user_model().objects.get(username="admin")
-saved_layer = file_upload(
-    "scratch/tl_2013_06_tract.shp",
-    name="tl_2013_06_tract",
-    user=admin,
-    overwrite=True,
-)
+files = {'uploaded_file': open('scratch/ca_tracts_pop.csv','rb')}
+response = client.post(base_url + '/datatables/api/upload', data={'title':'test'}, files=files)
+print response.content
+resp_dict = json.loads(response.content)
+datatable_name = resp_dict['datatable_name']
+print datatable_name
 
-join_props = {
-    'table_name': datatable_name, 
-    'layer_typename': saved_layer.typename, 
-    'table_attribute': 'GEO.id2', 
-    'layer_attribute': 'GEOID'
-}
+files = {
+    'base_file': open('scratch/tl_2013_06_tract.shp','rb'),
+    'dbf_file': open('scratch/tl_2013_06_tract.dbf','rb'),
+    'prj_file': open('scratch/tl_2013_06_tract.prj','rb'),
+    'shx_file': open('scratch/tl_2013_06_tract.shx','rb'),
+    'xml_file': open('scratch/tl_2013_06_tract.shp.xml','rb')
+    }
 
-print join_props
+# Retrieve the CSRF token first
+client.get(base_url + '/layers/upload')  # sets the cookie
+csrftoken = client.cookies['csrftoken']
 
-response = c.post('/datatables/api/join', join_props)
-print response
+response = client.post(base_url + '/layers/upload', files=files, data={'csrfmiddlewaretoken':csrftoken})
+print response.content
+
+#join_props = {
+#    'table_name': datatable_name, 
+#    'layer_typename': saved_layer.typename, 
+#    'table_attribute': 'GEO.id2', 
+#    'layer_attribute': 'GEOID'
+#}
+
+#print join_props
+
+#response = c.post('/datatables/api/join', join_props)
+#print response
