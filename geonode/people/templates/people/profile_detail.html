@@ -9,61 +9,77 @@
 {% block body_class %}people explore{% endblock %}
 
 {% block body %}
+
+<div class="page-header">
+  <h2 class="page-title">{{ profile.name_long }}</h2>
+</div>
 <div class="row">
-  <div class="col-md-12">
-    <h2 class="page-title">{{ profile.name_long }}</h2>
-  </div>
-  <div class="col-md-2">
+  <div class="col-xs-3 col-md-2 profile-avatar">
     {% avatar profile 140 %}
+    <a href="{% url "message_create" profile.pk %}" class="btn btn-primary btn-block" style="margin-top:4px;">{% trans "Message User" %}</a>
   </div>
-  <div class="col-md-6">
-    <dl class="dl-horizontal profile-details">
-     {% if profile.position %}
-     <dt><i class="fa fa-user"></i></dt>
-     <dd>{{ profile.position }}</dd>
-     {% endif %}
-     {% if profile.organization %}
-     <dt><i class="fa fa-building"></i></dt>
-     <dd>{{ profile.organization }}</dd>
-     {% endif %}
-     {% if user.is_authenticated %}
-        {% if profile.location %}
-        <dt><i class="fa fa-map-marker"></i></dt>
-        <dd>{{ profile.location }}</dd>
-        {% endif %}
-        {% if profile.voice %}
-        <dt><i class="fa fa-phone"></i></dt>
-        <dd><a href="tel:{{ profile.voice }}">{{ profile.voice }}</a></dd>
-        {% endif %}
-        {% if profile.fax %}
-        <dt><i class="fa fa-print"></i></dt>
-        <dd>{{ profile.fax }}</dd>
-        {% endif %}
-        {% if profile.email %}
-        <dt><i class="fa fa-envelope-o"></i></dt>
-        <dd>
-          <a href="mailto:{{ profile.email }}">{{ profile.email }}</a>
-        </dd>
-        {% endif %}
-        {% endif %}
-        {% if profile.keyword_list %}
-        <dt><i class="fa fa-tag"></i></dt>
-        <dd>
-          {% for keyword in profile.keyword_list %}
-            {{ keyword }}
-          {% endfor %}
-        </dd>
-        {% endif %}
-        {% if object.email %}
-        <dt><i class="fa fa-envelope-o"></i></dt>
-        <dd>
-          <a href="mailto:{{ object.email }}">{{ object.email }}</a>
-        </dd>
-        {% endif %}
-      </dl>
+  <div class="col-xs-9 col-md-6 profile-details">
+    <table class="table table-user-profile">
+        <tbody>
+        <tr>
+            <td class="table-user-profile-attribute">{% trans 'Email' %}</td>
+            {% if profile.email %}
+                <td><a href="mailto:{{ profile.email }}">{{ profile.email }}</a></td>
+            {% else %}
+                <td>{% trans 'Not provided.' %}</td>
+            {% endif %}
+          </tr>
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Name' %}</td>
+            <td>{{ profile.get_full_name | default:_('Not provided.') }}</td>
+          </tr>
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Position' %}</td>
+            <td>{{ profile.position | default:_('Not provided.') }}</td>
+          </tr>
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Organization'  %}</td>
+            <td>{{ profile.organization | default:_('Not provided.') }}</td>
+          </tr>
+          {% if user.is_authenticated %}
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Location' %}</td>
+            <td>{{ profile.location | default:_('Not provided.') }}</td>
+          </tr>
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Voice' %}</td>
+            {% if profile.voice %}
+                <td><a href="tel:{{ profile.voice }}">{{ profile.voice }}</a></td>
+            {% else %}
+                <td>Not provided.</td>
+            {% endif %}
+          </tr>
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Fax' %}</td>
+            <td>{{ profile.fax | default:_('Not provided.') }}</td>
+          </tr>
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Description' %}</td>
+            <td>{{ profile.profile | default:_('Not provided.') }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="table-user-profile-attribute">{% trans 'Keywords' %}</td>
+            <td>
+                {% if profile.keyword_list %}
+                    {% for keyword in profile.keyword_list %}
+                        <span class="label label-default">{{ keyword }}</span>
+                    {% endfor %}
+                {% else %}
+                    {% trans 'Not provided' %}
+                {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
   </div>
 
-  <div class="col-md-4">
+  <div class="col-xs-12 col-md-4">
     {% if user == profile %}
       <ul class="list-group">
         <li class="list-group-item"><a href="{% url "profile_edit" user.username %}"><i class="fa fa-edit"></i> {% trans "Edit profile" %}</a></li>
@@ -120,10 +136,10 @@
     {% for group in profile.group_list_all %}
       <article>
         <div class="row">
-           <div ng-if="group.logo != ''" class="col-md-2">
+           <div ng-if="group.logo != ''" class="col-xs-3 col-md-2 group-logo">
              <a href="{{ group.get_absolute_url }}" ><img src="/uploaded/{{ group.logo }}" alt="{{ group.title }}" class="group-logo" /></a>
            </div>
-           <div class="col-md-10">
+           <div class="col-xs-9 col-md-10">
              <h5>
                <i class="fa fa-group"></i> <a href="{{ group.get_absolute_url }}">{{ group.title }}</a>
                {% if group.email %} <a href="mailto:{{ group.email }}"><i class="fa fa-envelope-o"></i></a>{% endif %}

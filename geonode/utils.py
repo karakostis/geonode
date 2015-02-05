@@ -17,11 +17,15 @@
 #
 #########################################################################
 
+import os
 import httplib2
 import base64
 import math
 import copy
 import string
+import datetime
+import shapefile
+import re
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -271,6 +275,19 @@ class GXPMapBase(object):
                     sources.values()):
                 sources[
                     str(int(max(sources.keys(), key=int)) + 1)] = lyr["source"]
+
+        # adding remote services sources
+        from geonode.services.models import Service
+        index = int(max(sources.keys()))
+        for service in Service.objects.all():
+            remote_source = {
+                'url': service.base_url,
+                'remote': True,
+                'ptype': 'gxp_wmscsource',
+                'name': service.name
+            }
+            index += 1
+            sources[index] = remote_source
 
         config = {
             'id': self.id,
@@ -546,18 +563,71 @@ def format_urls(a, values):
     for i in a:
         j = i.copy()
         try:
-            j['url'] = j['url'].format(**values)
+            j['url'] = unicode(j['url']).format(**values)
         except KeyError:
             j['url'] = None
         b.append(j)
     return b
 
 
+def build_abstract(resourcebase, url=None, includeURL=True):
+    if resourcebase.abstract and url and includeURL:
+        return u"{abstract} -- [{url}]({url})".format(abstract=resourcebase.abstract, url=url)
+    else:
+        return resourcebase.abstract
+
+
+def build_caveats(resourcebase):
+    caveats = []
+    if resourcebase.maintenance_frequency:
+        caveats.append(resourcebase.maintenance_frequency_title())
+    if resourcebase.license:
+        caveats.append(resourcebase.license_verbose)
+    if resourcebase.data_quality_statement:
+        caveats.append(resourcebase.data_quality_statement)
+    if len(caveats) > 0:
+        return u"- "+u"%0A- ".join(caveats)
+    else:
+        return u""
+
+
 def build_social_links(request, resourcebase):
-    social_url = "{protocol}://{host}{path}".format(
+    social_url = u"{protocol}://{host}{path}".format(
         protocol=("https" if request.is_secure() else "http"),
         host=request.get_host(),
         path=request.get_full_path())
+    date = datetime.datetime.strftime(resourcebase.date, "%m/%d/%Y") if resourcebase.date else None
+    abstract = build_abstract(resourcebase, url=social_url, includeURL=True)
+    caveats = build_caveats(resourcebase)
     return format_urls(
         settings.SOCIAL_ORIGINS,
-        {'name': resourcebase.title, 'url': social_url})
+        {
+            'name': resourcebase.title,
+            'date': date,
+            'abstract': abstract,
+            'caveats': caveats,
+            'url': social_url})
+
+
+def check_shp_columnnames(layer):
+    """ Check if shapefile for a given layer has valid column names.
+    """
+    # TODO we may add in a better location this method
+    shp_name = ''
+    for f in layer.upload_session.layerfile_set.all():
+        if os.path.splitext(f.file.name)[1] == '.shp':
+            shp_name = f.file.path
+
+    # TODO we may need to improve this regexp
+    # first character must be any letter or "_"
+    # following characters can be any letter, number, "#", ":"
+    regex = r'^[a-zA-Z,_][a-zA-Z,_,#,:\d]*$'
+    a = re.compile(regex)
+    shp = shapefile.Reader(shp_name)
+    for field in shp.fields:
+        field_name = field[0]
+        if not a.match(field_name):
+            print 'Shapefile has an invalid column name: %s' % field_name
+            return False, field_name
+
+    return True, None

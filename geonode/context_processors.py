@@ -34,6 +34,7 @@ def resource_urls(request):
         SITE_NAME=site.name,
         SITE_DOMAIN=site.domain,
         RESOURCE_PUBLISHING=settings.RESOURCE_PUBLISHING,
+        THEME_ACCOUNT_CONTACT_EMAIL=settings.THEME_ACCOUNT_CONTACT_EMAIL,
         DEBUG_STATIC=getattr(
             settings,
             "DEBUG_STATIC",
@@ -81,6 +82,8 @@ def resource_urls(request):
             'METADATA',
             'never'),
         USE_NOTIFICATIONS=('notification' in settings.INSTALLED_APPS),
+        DEFAULT_ANONYMOUS_VIEW_PERMISSION = getattr(settings, 'DEFAULT_ANONYMOUS_VIEW_PERMISSION', False),
+        DEFAULT_ANONYMOUS_DOWNLOAD_PERMISSION = getattr(settings, 'DEFAULT_ANONYMOUS_DOWNLOAD_PERMISSION', False),
     )
 
     return defaults

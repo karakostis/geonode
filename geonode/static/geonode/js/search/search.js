@@ -3,13 +3,15 @@
 (function(){
 
   var module = angular.module('geonode_main_search', [], function($locationProvider) {
-      $locationProvider.html5Mode({
-        enabled: true,
-        requireBase: false
-      });
+      if (window.navigator.userAgent.indexOf("MSIE") == -1){
+          $locationProvider.html5Mode({
+            enabled: true,
+            requireBase: false
+          });
 
-      // make sure that angular doesn't intercept the page links
-      angular.element("a").prop("target", "_self");
+          // make sure that angular doesn't intercept the page links
+          angular.element("a").prop("target", "_self");
+      }
     });
 
     // Used to set the class of the filters based on the url parameters
@@ -27,6 +29,9 @@
   // Load categories and keywords
   module.load_categories = function ($http, $rootScope, $location){
         var params = typeof FILTER_TYPE == 'undefined' ? {} : {'type': FILTER_TYPE};
+        if ($location.search().hasOwnProperty('title__icontains')){
+          params['title__icontains'] = $location.search()['title__icontains'];
+        }
         $http.get(CATEGORIES_ENDPOINT, {params: params}).success(function(data){
             if($location.search().hasOwnProperty('category__identifier__in')){
                 data.objects = module.set_initial_filters_from_query(data.objects,

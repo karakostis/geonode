@@ -22,8 +22,15 @@
       {% block extra_head %}
       {% endblock %}
     {% endblock %}
-    <!--[if lt IE 9]>
+    <!--[if IE]>
       <script src="https://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+      <style>
+        #ieflag{
+            display: block !important;
+            height: 150px;
+            text-align: center;
+        }
+      </style>
     <![endif]-->
   </head>
   
@@ -53,6 +60,8 @@
             <li id="nav_documents">
               <a href="{% url "document_browse" %}">{% trans "Documents" %}</a>
             </li>
+           {% block extra_tab %}
+           {% endblock %}
             <li id="nav_people">
               <a href="{% url "profile_browse" %}">{% trans "People" %}</a>
             </li>
@@ -67,7 +76,7 @@
                 {% if HAYSTACK_SEARCH %}
                 <input id="search_input" type="text" placeholder="Search" class="form-control" name="q">
                 {% else %}
-                <input id="search_input" type="text" placeholder="Search" class="form-control" name="title__contains">
+                <input id="search_input" type="text" placeholder="Search" class="form-control" name="title__icontains">
                 {% endif %}
                 <span class="input-group-btn">
                   <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
@@ -98,6 +107,11 @@
     </nav>
     {% endblock header %}
 
+    <div class="alert alert-danger alert-dismissible" role="alert" id="ieflag" style="display:none">
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <h1>You are using an outdated browser that is not supported by GeoNode.</h1>
+      <p>Please use a <strong>modern browser</strong> like Mozilla Firefox, Google Chrome or Safari.</p>
+    </div>
 
   <div id="wrap">
     {% block middle %}
@@ -187,7 +201,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-            <h4 class="modal-title" id="myModalLabel">{% trans "Profile Menu" %}</h4>
+            <h4 class="modal-title" id="myModalLabel">{% trans "Menu" %}</h4>
           </div>
           <div class="modal-body">
             <ul class="list-unstyled">

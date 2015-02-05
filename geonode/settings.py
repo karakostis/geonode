@@ -305,7 +305,7 @@ INSTALLED_APPS = (
     'avatar',
     'dialogos',
     'agon_ratings',
-    'notification',
+    #'notification',
     'announcements',
     'actstream',
     'user_messages',
@@ -392,6 +392,11 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # This middleware allows to print private layers for the users that have 
+    # the permissions to view them.
+    # It sets temporary the involved layers as public before restoring the permissions.
+    # Beware that for few seconds the involved layers are public there could be risks.
+    # 'geonode.middleware.PrintProxyMiddleware',
 )
 
 
@@ -404,6 +409,10 @@ AUTHENTICATION_BACKENDS = (
 
 ANONYMOUS_USER_ID = -1
 GUARDIAN_GET_INIT_ANONYMOUS_USER = 'geonode.people.models.get_anonymous_user_instance'
+
+# Whether the uplaoded resources should be public and downloadable by default or not
+DEFAULT_ANONYMOUS_VIEW_PERMISSION = True
+DEFAULT_ANONYMOUS_DOWNLOAD_PERMISSION = True
 
 #
 # Settings for default search size
@@ -507,6 +516,7 @@ OGC_SERVER = {
         'WMST_ENABLED': False,
         'BACKEND_WRITE_ENABLED': True,
         'WPS_ENABLED': True,
+        'LOG_FILE': '%s/geoserver/data/logs/geoserver.log' % os.path.abspath(os.path.join(PROJECT_ROOT, os.pardir)),
         # Set to name of database in DATABASES dictionary to enable
         'DATASTORE': '',  # 'datastore',
         'TIMEOUT': 10  # number of seconds to allow for HTTP requests
@@ -652,6 +662,15 @@ SOCIAL_ORIGINS = [{
     "url":"https://plus.google.com/share?url={url}",
     "css_class":"gp"
 }]
+
+#CKAN Query String Parameters names pulled from
+#https://github.com/ckan/ckan/blob/2052628c4a450078d58fb26bd6dc239f3cc68c3e/ckan/logic/action/create.py#L43
+CKAN_ORIGINS = [{
+    "label":"Humanitarian Data Exchange (HDX)",
+    "url":"https://data.hdx.rwlabs.org/dataset/new?title={name}&dataset_date={date}&notes={abstract}&caveats={caveats}",
+    "css_class":"hdx"
+}]
+#SOCIAL_ORIGINS.extend(CKAN_ORIGINS)
 
 # Enable Licenses User Interface
 # Regardless of selection, license field stil exists as a field in the Resourcebase model.
@@ -801,6 +820,7 @@ NOTIFICATION_QUEUE_ALL = False
 
 BROKER_URL = "django://"
 CELERY_ALWAYS_EAGER = True
+CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 CELERY_IGNORE_RESULT = True
 CELERY_SEND_EVENTS = False
 CELERY_RESULT_BACKEND = None
@@ -833,6 +853,20 @@ try:
     from local_settings import *  # noqa
 except ImportError:
     pass
+
+
+#for windows users check if they didn't set GEOS and GDAL in local_settings.py
+#maybe they set it as a windows environment
+if os.name == 'nt':
+    if not "GEOS_LIBRARY_PATH" in locals() or not "GDAL_LIBRARY_PATH" in locals():
+        if os.environ.get("GEOS_LIBRARY_PATH", None) \
+            and os.environ.get("GDAL_LIBRARY_PATH", None):
+            GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH') 
+            GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH')
+        else:
+            #maybe it will be found regardless if not it will throw 500 error
+            from django.contrib.gis.geos import GEOSGeometry
+
 
 # define the urls after the settings are overridden
 if 'geonode.geoserver' in INSTALLED_APPS:
