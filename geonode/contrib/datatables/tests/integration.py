@@ -34,18 +34,21 @@ files = {
 # Retrieve the CSRF token first
 client.get(base_url + '/layers/upload')  # sets the cookie
 csrftoken = client.cookies['csrftoken']
+perms = '{"users":{"AnonymousUser":["view_resourcebase","download_resourcebase"]},"groups":{}}'
 
-response = client.post(base_url + '/layers/upload', files=files, data={'csrfmiddlewaretoken':csrftoken})
+response = client.post(base_url + '/layers/upload', files=files, data={'csrfmiddlewaretoken':csrftoken, 'permissions':perms})
 print response.content
+new_layer_name = json.loads(response.content)['url'].split('/')[2].replace('%3A', ':')
+print new_layer_name
 
-#join_props = {
-#    'table_name': datatable_name, 
-#    'layer_typename': saved_layer.typename, 
-#    'table_attribute': 'GEO.id2', 
-#    'layer_attribute': 'GEOID'
-#}
+join_props = {
+    'table_name': datatable_name, 
+    'layer_typename': new_layer_name,
+    'table_attribute': 'GEO.id2', 
+    'layer_attribute': 'GEOID'
+}
 
-#print join_props
+print join_props
 
-#response = c.post('/datatables/api/join', join_props)
-#print response
+response = client.post(base_url + '/datatables/api/join', data=join_props)
+print response.content
