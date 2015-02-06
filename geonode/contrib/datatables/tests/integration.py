@@ -1,3 +1,4 @@
+import sys
 import json
 import requests
 #from django.contrib.auth import get_user_model
@@ -5,7 +6,7 @@ import requests
 
 client = requests.session()
 
-base_url = "http://23.23.180.177:8000"
+base_url = "http://23.23.180.177"
 login_url = base_url + "/account/login/"
 
 # Retrieve the CSRF token first
