@@ -6,20 +6,22 @@ from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.utils.text import slugify
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import DataTable
 from .forms import UploadDataTableForm
 from .utils import process_csv_file, setup_join
 
 @login_required
+@csrf_exempt
 def datatable_upload_api(request):
     if request.method != 'POST':
         return HttpResponse("Invalid Request", mimetype="text/plain", status=500)
     else:
         form = UploadDataTableForm(request.POST, request.FILES)
         if form.is_valid():
-            table_name = slugify(unicode(os.path.splitext(os.path.basename(request.FILES['file'].name))[0])).replace('-','_')
-            instance = DataTable(uploaded_file=request.FILES['file'], table_name=table_name, title=table_name)
+            table_name = slugify(unicode(os.path.splitext(os.path.basename(request.FILES['uploaded_file'].name))[0])).replace('-','_')
+            instance = DataTable(uploaded_file=request.FILES['uploaded_file'], table_name=table_name, title=table_name)
             instance.save()
             dt = process_csv_file(instance)
             return_dict = {
@@ -28,9 +30,11 @@ def datatable_upload_api(request):
             }
             return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=200) 
         else:
+            print form.errors 
             return HttpResponse("Invalid Request", mimetype="text/plain", status=500)
 
 @login_required
+@csrf_exempt
 def tablejoin_api(request):
     if request.method == 'GET':
          return HttpResponse("Unsupported Method", mimetype="text/plain", status=500) 
