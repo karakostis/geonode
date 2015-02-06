@@ -9,9 +9,11 @@ from csvkit import sql
 from csvkit import table
 from csvkit import CSVKitWriter
 from csvkit.cli import CSVKitUtility
+from django.db.models import signals
 from geoserver.catalog import Catalog
 from geoserver.store import datastore_from_index
 from geonode.geoserver.helpers import ogc_server_settings
+from geonode.geoserver.signals import geoserver_pre_save
 
 import psycopg2
 from psycopg2.extensions import QuotedString
@@ -162,6 +164,8 @@ def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
     ft = cat.publish_featuretype(double_view_name, ds, layer.srid, srs=layer.srid)
     cat.save(ft)
 
+    
+    signals.pre_save.disconnect(geoserver_pre_save, sender=Layer)
     layer, created = Layer.objects.get_or_create(name=view_name, defaults={
         "workspace": workspace.name,
         "store": ds.name,
@@ -175,6 +179,7 @@ def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
         "bbox_y0": Decimal(ft.latlon_bbox[2]),
         "bbox_y1": Decimal(ft.latlon_bbox[3])
     })
+    signals.pre_save.connect(geoserver_pre_save, sender=Layer) 
     set_attributes(layer, overwrite=True)
     tj.join_layer = layer
     tj.save()
