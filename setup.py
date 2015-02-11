@@ -132,7 +132,6 @@ setup(name='GeoNode',
         # geopython dependencies
         "OWSLib==0.8.10",
         "pycsw==1.10.0",
-        "pyshp==1.2.1",
 
         # haystack/elasticsearch, uncomment to use
         "django-haystack==2.1.0",
@@ -142,7 +141,7 @@ setup(name='GeoNode',
 
         # datetimepicker widget
         "django-bootstrap3-datetimepicker==2.2.3",
-        "flake8==2.2.5"
+        "flake8==2.3.0"
         ],
       zip_safe=False,
       )
