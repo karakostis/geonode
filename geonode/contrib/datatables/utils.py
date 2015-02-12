@@ -146,8 +146,8 @@ def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
         conn.commit()
     except Exception as e:
         logger.error(
-            "Error Creating table %s:%s",
-            instance.name,
+            "Error Joining table %s to layer %s:%s",
+            table_name, layer_typename,
             str(e))
     finally:
         conn.close()
