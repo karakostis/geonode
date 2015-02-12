@@ -23,23 +23,25 @@ def datatable_upload_api(request):
             table_name = slugify(unicode(os.path.splitext(os.path.basename(request.FILES['uploaded_file'].name))[0])).replace('-','_')
             instance = DataTable(uploaded_file=request.FILES['uploaded_file'], table_name=table_name, title=table_name)
             instance.save()
-            dt = process_csv_file(instance)
+            dt, msg = process_csv_file(instance)
             if dt:
                 return_dict = {
                     'datatable_id': dt.pk,
-                    'datatable_name': dt.table_name
+                    'datatable_name': dt.table_name,
+                    'success': True,
+                    'msg': ""
                 }
                 return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=200) 
             else:
                 return_dict = {
                     'datatable_id': None,
                     'datatable_name': None,
-                    'error': True
+                    'success': False,
+                    'msg': msg
                 } 
                 return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=400) 
         else:
-            print form.errors 
-            return HttpResponse("Invalid Request", mimetype="text/plain", status=500)
+            return HttpResponse("Form Errors: %s" % str(form.errors), mimetype="text/plain", status=400)
 
 @login_required
 @csrf_exempt

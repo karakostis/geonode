@@ -1,3 +1,4 @@
+import sys
 import os
 import os
 import glob
@@ -45,12 +46,13 @@ def process_csv_file(instance):
         csv_table = table.Table.from_csv(f,name=table_name)
     except:
         instance.delete()
-        return None
+        return None, str(sys.exc_info()[0])
 
     csv_file = File(f)
     f.close()
 
-    for column in csv_table: 
+    for column in csv_table:
+        column.name = slugify(unicode(column.name)).replace('-','_')
         attribute, created = Attribute.objects.get_or_create(resource=instance, 
             attribute=column.name, 
             attribute_label=column.name, 
@@ -58,10 +60,14 @@ def process_csv_file(instance):
             display_order=column.order)
 
     # Create Database Table
-    sql_table = sql.make_table(csv_table,table_name)
-    create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
-    instance.create_table_sql = create_table_sql
-    instance.save()
+    try:
+        sql_table = sql.make_table(csv_table,table_name)
+        create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
+        instance.create_table_sql = create_table_sql
+        instance.save()
+    except:
+        instance.delete()
+        return None, str(sys.exc_info()[0])
 
     import psycopg2
     db = ogc_server_settings.datastore_db
@@ -95,8 +101,7 @@ def process_csv_file(instance):
     try:
         engine, metadata = sql.get_connection(connection_string)
     except ImportError:
-        print "Unable to connect"
-        return None
+        return None, str(sys.exc_info()[0])
 
     conn = engine.connect()
     trans = conn.begin()
@@ -109,13 +114,13 @@ def process_csv_file(instance):
         except:
             # Clean up after ourselves
             instance.delete() 
-            return None 
+            return None, str(sys.exc_info()[0])
 
     trans.commit()
     conn.close()
     f.close()
     
-    return instance 
+    return instance, ""
 
 def setup_join(table_name, layer_typename, table_attribute, layer_attribute):
     dt = DataTable.objects.get(table_name=table_name)
