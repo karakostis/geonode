@@ -24,11 +24,19 @@ def datatable_upload_api(request):
             instance = DataTable(uploaded_file=request.FILES['uploaded_file'], table_name=table_name, title=table_name)
             instance.save()
             dt = process_csv_file(instance)
-            return_dict = {
-                'datatable_id': dt.pk,
-                'datatable_name': dt.table_name
-            }
-            return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=200) 
+            if dt:
+                return_dict = {
+                    'datatable_id': dt.pk,
+                    'datatable_name': dt.table_name
+                }
+                return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=200) 
+            else:
+                return_dict = {
+                    'datatable_id': None,
+                    'datatable_name': None,
+                    'error': True
+                } 
+                return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=400) 
         else:
             print form.errors 
             return HttpResponse("Invalid Request", mimetype="text/plain", status=500)
