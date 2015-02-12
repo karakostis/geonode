@@ -2,7 +2,9 @@ import sys
 import os
 import json
 import traceback
-from django.shortcuts import render
+from django.core import serializers
+from django.core.serializers.json import Serializer
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.utils.text import slugify
@@ -42,6 +44,19 @@ def datatable_upload_api(request):
                 return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=400) 
         else:
             return HttpResponse("Form Errors: %s" % str(form.errors), mimetype="text/plain", status=400)
+
+@login_required
+@csrf_exempt
+def datatable_detail(request, dt_id):
+    dt = get_object_or_404(DataTable, pk=dt_id)
+    object = json.loads(serializers.serialize("json", (dt,), fields=('uploaded_file', 'table_name')))[0]
+    attributes = json.loads(serializers.serialize("json", dt.attributes.all()))
+    attribute_list = []
+    for attribute in attributes:
+        attribute_list.append({'attribute':attribute['fields']['attribute'], 'type':attribute['fields']['attribute_type']})
+    object["attributes"] = attribute_list
+    data = json.dumps(object) 
+    return HttpResponse(data)
 
 @login_required
 @csrf_exempt
