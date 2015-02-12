@@ -40,8 +40,12 @@ def process_csv_file(instance):
     instance.table_name = table_name
     instance.save()
     f = open(csv_filename, 'rb')
-    
-    csv_table = table.Table.from_csv(f,name=table_name)
+   
+    try: 
+        csv_table = table.Table.from_csv(f,name=table_name)
+    except:
+        instance.delete()
+        return None
 
     csv_file = File(f)
     f.close()
@@ -88,7 +92,6 @@ def process_csv_file(instance):
 
     # Copy Data to postgres
     connection_string = "postgresql://%s:%s@%s:%s/%s" % (db['USER'], db['PASSWORD'], db['HOST'], db['PORT'], db['NAME'])
-    print connection_string
     try:
         engine, metadata = sql.get_connection(connection_string)
     except ImportError:
@@ -101,7 +104,12 @@ def process_csv_file(instance):
     if csv_table.count_rows() > 0:
         insert = sql_table.insert()
         headers = csv_table.headers()
-        conn.execute(insert, [dict(zip(headers, row)) for row in csv_table.to_rows()])
+        try:
+            conn.execute(insert, [dict(zip(headers, row)) for row in csv_table.to_rows()])
+        except:
+            # Clean up after ourselves
+            instance.delete() 
+            return None 
 
     trans.commit()
     conn.close()
