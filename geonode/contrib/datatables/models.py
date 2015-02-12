@@ -4,6 +4,10 @@ from django.db.models import signals
 from geonode.base.models import ResourceBase
 from geonode.layers.models import Attribute, AttributeManager
 from geonode.layers.models import Layer
+from django.utils.text import slugify
+
+CATEGORIES = ('Census Tract', 'Census Block', 'Census Block Group')
+CATEGORY_CHOICES = [ (slugify(unicode(x.upper())), x) for x in CATEGORIES]
 
 class DataTable(ResourceBase):
 
@@ -41,9 +45,19 @@ class JoinTarget(models.Model):
 
     layer = models.ForeignKey(Layer)
     attributes = models.ManyToManyField(Attribute)
+    category = models.CharField(max_length=100, choices=CATEGORY_CHOICES)
     
     def __unicode__(self):
         return self.layer.title
+
+    def as_json(self):
+        attribute_list = []
+        for attribute in self.attributes.all():
+            attribute_list.append({'attribute':attribute.attribute, 'type':attribute.attribute_type})
+        return dict(
+            id=self.id, layer=self.layer.typename,
+            attributes=attribute_list,
+            category=self.category)
 
 class TableJoin(models.Model):
     """

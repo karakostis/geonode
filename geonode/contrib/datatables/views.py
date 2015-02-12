@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import DataTable
+from .models import DataTable, JoinTarget
 from .forms import UploadDataTableForm
 from .utils import process_csv_file, setup_join
 
@@ -57,6 +57,12 @@ def datatable_detail(request, dt_id):
     object["attributes"] = attribute_list
     data = json.dumps(object) 
     return HttpResponse(data)
+
+@login_required
+def jointargets(request):
+    jts = JoinTarget.objects.all()
+    results = [ob.as_json() for ob in JoinTarget.objects.all()] 
+    return HttpResponse(json.dumps(results), mimetype="application/json")
 
 @login_required
 @csrf_exempt
