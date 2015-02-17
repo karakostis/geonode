@@ -22,10 +22,14 @@ def datatable_upload_api(request):
     else:
         form = UploadDataTableForm(request.POST, request.FILES)
         if form.is_valid():
+            data = form.cleaned_data
             table_name = slugify(unicode(os.path.splitext(os.path.basename(request.FILES['uploaded_file'].name))[0])).replace('-','_')
             instance = DataTable(uploaded_file=request.FILES['uploaded_file'], table_name=table_name, title=table_name)
+            delimiter = data['delimiter_type'] 
+            no_header_row = data['no_header_row']
+            
             instance.save()
-            dt, msg = process_csv_file(instance)
+            dt, msg = process_csv_file(instance, delimiter=delimiter, no_header_row=no_header_row)
             if dt:
                 return_dict = {
                     'datatable_id': dt.pk,
@@ -33,7 +37,7 @@ def datatable_upload_api(request):
                     'success': True,
                     'msg': ""
                 }
-                return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=200) 
+                return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=200) 
             else:
                 return_dict = {
                     'datatable_id': None,
@@ -41,9 +45,15 @@ def datatable_upload_api(request):
                     'success': False,
                     'msg': msg
                 } 
-                return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=400) 
+                return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=400) 
         else:
-            return HttpResponse("Form Errors: %s" % str(form.errors), mimetype="text/plain", status=400)
+            return_dict = {
+                'datatable_id': None,
+                'datatable_name': None,
+                'success': False,
+                'msg': "Form Errors: " + form.errors.as_text() 
+            }
+            return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=400)
 
 @login_required
 @csrf_exempt
@@ -68,7 +78,7 @@ def jointargets(request):
 @csrf_exempt
 def tablejoin_api(request):
     if request.method == 'GET':
-         return HttpResponse("Unsupported Method", mimetype="text/plain", status=500) 
+         return HttpResponse("Unsupported Method", mimetype="application/json", status=500) 
     elif request.method == 'POST':
         table_name = request.POST.get("table_name", None)
         layer_typename = request.POST.get("layer_typename", None)
@@ -87,7 +97,7 @@ def tablejoin_api(request):
                     'join_layer': tj.join_layer.typename,
                     'layer_url': tj.join_layer.get_absolute_url()
                 }                  
-                return HttpResponse(json.dumps(return_dict), mimetype="text/plain", status=200)
+                return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=200)
             except:
                 traceback.print_exc(file=sys.stdout) 
                 return HttpResponse("Unexpected Error", mimetype="text/plain", status=500) 

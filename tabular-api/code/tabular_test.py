@@ -37,13 +37,15 @@ class TabularTest:
         print r.status_code
 
         
-    def upload_csv_file(self, title, fname_to_upload):
+    def upload_csv_file(self, title, fname_to_upload, delimiter_type='COMMA', no_header_row=False):
 
         msgt('upload_csv_file: %s' % self.csv_upload_url)
 
         files = {'uploaded_file': open(fname_to_upload,'rb')}
         response = self.client.post(self.csv_upload_url\
-                    , data={'title' : title }\
+                    , data={'title' : title
+                    , 'delimiter_type':delimiter_type
+                    , 'no_header_row':no_header_row}\
                     , files=files)
 
         if response.status_code == 200:
@@ -127,9 +129,11 @@ if __name__=='__main__':
     tr = TabularTest()
     tr.login_for_cookie()
 
-    layer = tr.add_shapefile_layer('tabular-api/input/tl_2014_25_tract/', 'tl_2014_25_tract')
+    #layer = tr.add_shapefile_layer('tabular-api/input/tl_2014_25_tract/', 'tl_2014_25_tract')
     dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
+    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
+    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
     
     # Join CSV to existing layer
-    join_props = {'layer_typename': 'geonode:tl_2014_25_tract', 'table_name': 'boston_income_73g', 'table_attribute': 'tract', 'layer_attribute': 'TRACTCE'}
-    tr.join_datatable_to_layer(join_props)
+    #join_props = {'layer_typename': 'geonode:tl_2014_25_tract', 'table_name': 'boston_income_73g', 'table_attribute': 'tract', 'layer_attribute': 'TRACTCE'}
+    #tr.join_datatable_to_layer(join_props)

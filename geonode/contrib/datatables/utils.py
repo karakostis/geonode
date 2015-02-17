@@ -32,7 +32,7 @@ _password = settings.OGC_SERVER['default']['PASSWORD']
 
 logger = logging.getLogger('geonode.contrib.datatables.utils')
 
-def process_csv_file(instance):
+def process_csv_file(instance, delimiter=",", no_header_row=False):
     csv_filename = instance.uploaded_file.path
     table_name = slugify(unicode(os.path.splitext(os.path.basename(csv_filename))[0])).replace('-','_')
     if table_name[:1].isdigit():
@@ -43,8 +43,9 @@ def process_csv_file(instance):
     f = open(csv_filename, 'rb')
    
     try: 
-        csv_table = table.Table.from_csv(f,name=table_name)
+        csv_table = table.Table.from_csv(f,name=table_name, no_header_row=no_header_row, delimiter=delimiter)
     except:
+        print sys.exc_info()
         instance.delete()
         return None, str(sys.exc_info()[0])
 
