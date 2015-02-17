@@ -132,13 +132,13 @@ def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute
         table_attribute = dt.attributes.get(resource=dt,attribute=table_attribute_name)
         layer_attribute = layer.attributes.get(resource=layer, attribute=layer_attribute_name)
     except Exception as e:
-        msg = "Invalid parameters specified %s:%s:%s%s" % (table_name, layer_typename, table_attribute_name, layer_attribute_name)
+        msg = "Error: (%s) %s:%s:%s:%s" % (str(e), table_name, layer_typename, table_attribute_name, layer_attribute_name)
         return None, msg
 
     layer_name = layer.typename.split(':')[1]
     view_name = "join_%s_%s" % (layer_name, dt.table_name)
 
-    view_sql = 'create materialized view %s as select %s.*, %s.* from %s inner join %s on %s."%s" = %s."%s";' %  (view_name, layer_name, dt.table_name, layer_name, dt.table_name, layer_name, layer_attribute.attribute, dt.table_name, table_attribute.attribute)
+    view_sql = 'create materialized view %s as select %s.the_geom, %s.* from %s inner join %s on %s."%s" = %s."%s";' %  (view_name, layer_name, dt.table_name, layer_name, dt.table_name, layer_name, layer_attribute.attribute, dt.table_name, table_attribute.attribute)
     double_view_name = "view_%s" % view_name
     double_view_sql = "create view %s as select * from %s" % (double_view_name, view_name)
     tj, created = TableJoin.objects.get_or_create(source_layer=layer,datatable=dt, table_attribute=table_attribute, layer_attribute=layer_attribute, view_name=double_view_name)
