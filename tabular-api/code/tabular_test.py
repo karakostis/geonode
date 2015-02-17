@@ -85,7 +85,7 @@ class TabularTest:
                                 }\
                         )
 
-        #print response.content
+        print response.content
         new_layer_name = json.loads(response.content)['url'].split('/')[2].replace('%3A', ':')
         print new_layer_name
         return new_layer_name
@@ -130,10 +130,16 @@ if __name__=='__main__':
     tr.login_for_cookie()
 
     #layer = tr.add_shapefile_layer('tabular-api/input/tl_2014_25_tract/', 'tl_2014_25_tract')
-    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
+    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
     #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
     #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
     
     # Join CSV to existing layer
-    #join_props = {'layer_typename': 'geonode:tl_2014_25_tract', 'table_name': 'boston_income_73g', 'table_attribute': 'tract', 'layer_attribute': 'TRACTCE'}
-    #tr.join_datatable_to_layer(join_props)
+
+    # Invalid Props
+    #join_props = {'table_name':'xyz', 'layer_typename':'abc', 'table_attribute':'hij', 'layer_attribute':'qrs'} 
+    # Missing table_name 
+    #join_props = {'layer_typename':'abc', 'table_attribute':'hij', 'layer_attribute':'qrs'} 
+    # Type Mismatch 
+    join_props = {'layer_typename': 'geonode:tl_2014_25_tract', 'table_name': 'boston_income_73g', 'table_attribute': 'tract', 'layer_attribute': 'TRACTCE'} 
+    tr.join_datatable_to_layer(join_props)

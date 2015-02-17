@@ -8,6 +8,7 @@ from django.utils.text import slugify
 
 CATEGORIES = ('Census Tract', 'Census Block', 'Census Block Group')
 CATEGORY_CHOICES = [ (slugify(unicode(x.upper())), x) for x in CATEGORIES]
+TRANSFORMATION_FUNCTIONS = []
 
 class DataTable(ResourceBase):
 
@@ -38,25 +39,40 @@ class DataTable(ResourceBase):
         cur.close()
         conn.close() 
 
+class JoinTargetFormatType(models.Model):
+    name = models.CharField(max_length=255, help_text='Census Tract (6 digits, no decimal)') 
+    description_shorthand = models.CharField(max_length=255, help_text='dddddd') 
+    clean_steps = models.TextField(help_text='verbal description. e.g. Remove non integers. Check for empty string. Pad with zeros until 6 digits.')
+    regex_replacement_string = models.CharField(help_text='"[^0-9]"; Usage: re.sub("[^0-9]", "", "1234.99"'\
+                                , max_length=255)
+    python_code_snippet = models.TextField(blank=True)
+    tranformation_function_name = models.CharField(max_length=255, blank=True, choices=TRANSFORMATION_FUNCTIONS)
+
+    def __unicode__(self):
+        return self.name
+
 class JoinTarget(models.Model):
     """
     JoinTarget
     """
 
     layer = models.ForeignKey(Layer)
-    attributes = models.ManyToManyField(Attribute)
+    attribute = models.ForeignKey(Attribute)
     category = models.CharField(max_length=100, choices=CATEGORY_CHOICES)
+    type = models.ForeignKey(JoinTargetFormatType, null=True, blank=True)
     
     def __unicode__(self):
         return self.layer.title
 
     def as_json(self):
-        attribute_list = []
-        for attribute in self.attributes.all():
-            attribute_list.append({'attribute':attribute.attribute, 'type':attribute.attribute_type})
+        if self.type:
+            type = {'name':self.type.name, 'description':self.type.description_shorthand, 'clean_steps':self.type.clean_steps}
+        else:
+            type = None
         return dict(
             id=self.id, layer=self.layer.typename,
-            attributes=attribute_list,
+            attribute={'attribute':self.attribute.attribute, 'type':self.attribute.attribute_type},
+            type=type,
             category=self.category)
 
 class TableJoin(models.Model):

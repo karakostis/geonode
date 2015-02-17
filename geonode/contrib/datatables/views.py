@@ -9,6 +9,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.translation import ugettext_lazy as _
 
 from .models import DataTable, JoinTarget
 from .forms import UploadDataTableForm
@@ -86,20 +87,30 @@ def tablejoin_api(request):
         layer_attribute = request.POST.get("layer_attribute", None)
         if table_name and layer_typename and table_attribute and layer_attribute:
             try:
-                tj = setup_join(table_name, layer_typename, table_attribute, layer_attribute)
-                return_dict = {
-                    'join_id': tj.pk,
-                    'view_name': tj.view_name,
-                    'datatable': tj.datatable.table_name,
-                    'source_layer': tj.source_layer.typename,
-                    'table_attribute': tj.table_attribute.attribute,
-                    'layer_attribute': tj.layer_attribute.attribute,
-                    'join_layer': tj.join_layer.typename,
-                    'layer_url': tj.join_layer.get_absolute_url()
-                }                  
-                return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=200)
+                tj, msg = setup_join(table_name, layer_typename, table_attribute, layer_attribute)
+                if tj:
+                    return_dict = {
+                        'join_id': tj.pk,
+                        'view_name': tj.view_name,
+                        'datatable': tj.datatable.table_name,
+                        'source_layer': tj.source_layer.typename,
+                        'table_attribute': tj.table_attribute.attribute,
+                        'layer_attribute': tj.layer_attribute.attribute,
+                        'join_layer': tj.join_layer.typename,
+                        'layer_url': tj.join_layer.get_absolute_url()
+                    }
+                    return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=200)
+                else:
+                    return_dict = {
+                        'success': False,
+                        'msg': "Error Creating Join: %s" % msg 
+                    }
+                    return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=400)
             except:
-                traceback.print_exc(file=sys.stdout) 
-                return HttpResponse("Unexpected Error", mimetype="text/plain", status=500) 
+                return_dict = {
+                    'success': False,
+                    'msg': "Error Creating Join: %s" % msg 
+                }
+                return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=400) 
         else:
-            return HttpResponse("Invalid Request", mimetype="text/plain", status=500) 
+            return HttpResponse(json.dumps({'msg':'Invalid Request', 'success':False}), mimetype='application/json', status=400)
