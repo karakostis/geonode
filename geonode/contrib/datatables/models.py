@@ -6,8 +6,6 @@ from geonode.layers.models import Attribute, AttributeManager
 from geonode.layers.models import Layer
 from django.utils.text import slugify
 
-CATEGORIES = ('Census Tract', 'Census Block', 'Census Block Group')
-CATEGORY_CHOICES = [ (slugify(unicode(x.upper())), x) for x in CATEGORIES]
 TRANSFORMATION_FUNCTIONS = []
 
 class DataTable(ResourceBase):
@@ -39,6 +37,17 @@ class DataTable(ResourceBase):
         cur.close()
         conn.close() 
 
+class GeocodeType(models.Model):
+    name = models.CharField(max_length=255, unique=True, help_text='Examples: US Census Block, US County FIPS code, US Zip code, etc')
+    description = models.CharField(max_length=255, blank=True, help_text='Short description for end user')
+    sort_order = models.IntegerField(default=10)
+
+    def __unicode__(self):
+        return self.name
+
+    class Meta:
+        ordering = ('sort_order', 'name')
+
 class JoinTargetFormatType(models.Model):
     name = models.CharField(max_length=255, help_text='Census Tract (6 digits, no decimal)') 
     description_shorthand = models.CharField(max_length=255, help_text='dddddd') 
@@ -58,7 +67,7 @@ class JoinTarget(models.Model):
 
     layer = models.ForeignKey(Layer)
     attribute = models.ForeignKey(Attribute)
-    category = models.CharField(max_length=100, choices=CATEGORY_CHOICES)
+    geocode_type = models.ForeignKey(GeocodeType, on_delete=models.PROTECT)
     type = models.ForeignKey(JoinTargetFormatType, null=True, blank=True)
     
     def __unicode__(self):
@@ -102,6 +111,16 @@ class TableJoin(models.Model):
         conn.commit()
         cur.close()
         conn.close() 
+
+    def as_json(self):
+        return dict(
+            id=self.id, datable=self.datatable.table_name, source_layer=self.source_layer.typename, join_layer=self.join_layer.typename,
+            table_attribute={'attribute':self.table_attribute.attribute, 'type':self.table_attribute.attribute_type},
+            layer_attribute={'attribute':self.layer_attribute.attribute, 'type':self.layer_attribute.attribute_type},
+            view_name=self.view_name, 
+            matched_records_count=self.matched_records_count,
+            unmatched_records_count=self.unmatched_records_count,
+            unmatched_records_list=self.unmatched_records_list)
 
 def pre_delete_datatable(instance, sender, **kwargs):
     """

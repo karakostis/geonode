@@ -11,7 +11,7 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.translation import ugettext_lazy as _
 
-from .models import DataTable, JoinTarget
+from .models import DataTable, JoinTarget, TableJoin 
 from .forms import UploadDataTableForm
 from .utils import process_csv_file, setup_join
 
@@ -117,6 +117,14 @@ def tablejoin_api(request):
                 return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=400) 
         else:
             return HttpResponse(json.dumps({'msg':'Invalid Request', 'success':False}), mimetype='application/json', status=400)
+
+@login_required
+@csrf_exempt
+def tablejoin_detail(request, tj_id):
+    tj = get_object_or_404(TableJoin, pk=tj_id)
+    results = [ob.as_json() for ob in [tj]][0]
+    data = json.dumps(results)
+    return HttpResponse(data)
 
 @login_required
 @csrf_exempt

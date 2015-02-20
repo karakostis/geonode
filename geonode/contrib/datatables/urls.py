@@ -8,6 +8,7 @@ js_info_dict = {
 urlpatterns = patterns('geonode.contrib.datatables.views',
                        url(r'^api/upload/?$', 'datatable_upload_api', name='datatable_upload_api'),
                        url(r'^api/upload_and_join/?$', 'datatable_upload_and_join_api', name='datatable_upload_and_join_api'),
+                       url(r'^api/join/(?P<tj_id>\d+)/$', 'tablejoin_detail', name='tablejoin_detail'),
                        url(r'^api/join/?$', 'tablejoin_api', name='tablejoin_api'),
                        url(r'^api/jointargets/?$', 'jointargets', name='jointargets'),
                        url(r'^api/(?P<dt_id>\d+)/$', 'datatable_detail', name='datatable_detail'),
