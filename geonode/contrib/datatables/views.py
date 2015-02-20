@@ -128,6 +128,30 @@ def tablejoin_detail(request, tj_id):
 
 @login_required
 @csrf_exempt
+def tablejoin_remove(request, tj_id):
+    # TODO: Check Permissions!!
+    try:
+        tj = get_object_or_404(TableJoin, pk=tj_id)
+        tj.datatable.delete()
+        tj.join_layer.delete()
+        tj.delete()
+        return HttpResponse(json.dumps({'success':True, 'msg': ('%s removed' % (tj.view_name))}), mimetype='application/json', status=200)
+    except:
+        return HttpResponse(json.dumps({'success':False, 'msg': ('Error removing Join %s' % (sys.exc_info()[0]))}), mimetype='application/json', status=400)
+
+@login_required
+@csrf_exempt
+def datatable_remove(request, dt_id):
+    # TODO: Check Permissions!!
+    try:
+        dt = get_object_or_404(DataTable, pk=dt_id)
+        dt.delete()
+        return HttpResponse(json.dumps({'success':True, 'msg': ('%s removed' % (dt.table_name))}), mimetype='application/json', status=200)
+    except:
+        return HttpResponse(json.dumps({'success':False, 'msg': ('Error removing DataTable %s' % (sys.exc_info()[0]))}), mimetype='application/json', status=400)
+
+@login_required
+@csrf_exempt
 def datatable_upload_and_join_api(request):
     request_post_copy = request.POST.copy()
     join_props = request_post_copy
