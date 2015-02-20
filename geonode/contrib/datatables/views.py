@@ -114,3 +114,28 @@ def tablejoin_api(request):
                 return HttpResponse(json.dumps(return_dict), mimetype="application/json", status=400) 
         else:
             return HttpResponse(json.dumps({'msg':'Invalid Request', 'success':False}), mimetype='application/json', status=400)
+
+@login_required
+@csrf_exempt
+def datatable_upload_and_join_api(request):
+    request_post_copy = request.POST.copy()
+    join_props = request_post_copy
+    try:
+        resp = datatable_upload_api(request)
+        upload_return_dict = json.loads(resp.content)
+        if upload_return_dict['success'] != True:
+            return HttpResponse(json.dumps(upload_return_dict), mimetype='application/json', status=400)
+        join_props['table_name'] = upload_return_dict['datatable_name']
+    except:
+        traceback.print_exc(sys.exc_info())
+        return HttpResponse(json.dumps({'msg':'Uncaught error ingesting Data Table', 'success':False}), mimetype='application/json', status=400)
+    try:
+        original_table_attribute = join_props['table_attribute']
+        sanitized_table_attribute = slugify(unicode(original_table_attribute)).replace('-','_') 
+        join_props['table_attribute'] = sanitized_table_attribute
+        request.POST = join_props
+        resp = tablejoin_api(request)
+        return resp 
+    except:
+        traceback.print_exc(sys.exc_info())
+        return HttpResponse("Not yet")

@@ -18,6 +18,7 @@ class TabularTest:
         self.base_url = base_url
         self.login_url =  self.base_url + "/account/login/"
         self.csv_upload_url  = self.base_url + '/datatables/api/upload'
+        self.upload_and_join_url = self.base_url + '/datatables/api/upload_and_join'
         self.shp_layer_upload_url = self.base_url + '/layers/upload'
         self.join_datatable_url = self.base_url + '/datatables/api/join'
         
@@ -56,6 +57,30 @@ class TabularTest:
             except:
                 print sys.exc_info()[0]
                 return None 
+        else:
+            resp_dict = json.loads(response.content)
+            print "Server Error: " + resp_dict['msg']
+            return None
+
+    def upload_and_join(self, fname_to_upload, join_props):
+        msgt('upload_and_join: %s' % self.upload_and_join_url)
+
+        files = {'uploaded_file': open(fname_to_upload,'rb')}
+
+        response = self.client.post(self.upload_and_join_url\
+                    , data=join_props
+                    , files=files)
+
+        print response.content
+        if response.status_code == 200:
+            try:
+                resp_dict = json.loads(response.content)
+                datatable = resp_dict['datatable']
+                join_layer = resp_dict['join_layer']
+                return datatable, join_layer
+            except:
+                print sys.exc_info()[0]
+                return None
         else:
             resp_dict = json.loads(response.content)
             print "Server Error: " + resp_dict['msg']
@@ -129,17 +154,27 @@ if __name__=='__main__':
     tr = TabularTest()
     tr.login_for_cookie()
 
+    # --Upload Layers to test with--
+
     #layer = tr.add_shapefile_layer('tabular-api/input/tl_2014_25_tract/', 'tl_2014_25_tract')
+    layer = tr.add_shapefile_layer('scratch/shape/', 'tl_2013_06_tract')
+    print layer
+
+    # --Upload csv files to test with--
     #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
     #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
     #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
     
-    # Join CSV to existing layer
-
+    # --Join CSV to existing layer--
     # Invalid Props
     #join_props = {'table_name':'xyz', 'layer_typename':'abc', 'table_attribute':'hij', 'layer_attribute':'qrs'} 
     # Missing table_name 
     #join_props = {'layer_typename':'abc', 'table_attribute':'hij', 'layer_attribute':'qrs'} 
     # Type Mismatch 
-    join_props = {'layer_typename': 'geonode:tl_2014_25_tract', 'table_name': 'boston_income_73g', 'table_attribute': 'tract', 'layer_attribute': 'TRACTCE'} 
-    tr.join_datatable_to_layer(join_props)
+    #join_props = {'layer_typename': 'geonode:tl_2014_25_tract', 'table_name': 'boston_income_73g', 'table_attribute': 'tract', 'layer_attribute': 'TRACTCE'} 
+    #tr.join_datatable_to_layer(join_props)
+
+    # --Upload and Join--
+    join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
+    datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
+    print datatable, joinlayer
