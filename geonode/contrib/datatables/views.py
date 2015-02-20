@@ -92,6 +92,9 @@ def tablejoin_api(request):
                     return_dict = {
                         'join_id': tj.pk,
                         'view_name': tj.view_name,
+                        'matched_records': tj.matched_records_count,
+                        'unmatched_records': tj.unmatched_records_count,
+                        'unmatched_records_list': tj.unmatched_records_list,
                         'datatable': tj.datatable.table_name,
                         'source_layer': tj.source_layer.typename,
                         'table_attribute': tj.table_attribute.attribute,
