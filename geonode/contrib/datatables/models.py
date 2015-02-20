@@ -87,6 +87,9 @@ class TableJoin(models.Model):
     view_name = models.CharField(max_length=255, null=True, blank=True)
     view_sql = models.TextField(null=True, blank=True)
     join_layer = models.ForeignKey(Layer, related_name="join_layer", null=True, blank=True)
+    matched_records_count = models.IntegerField(null=True, blank=True)
+    unmatched_records_count = models.IntegerField(null=True, blank=True)
+    unmatched_records_list = models.TextField(null=True, blank=True)
 
     def __unicode__(self):
         return self.view_name

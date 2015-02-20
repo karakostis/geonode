@@ -141,6 +141,9 @@ def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute
     view_sql = 'create materialized view %s as select %s.the_geom, %s.* from %s inner join %s on %s."%s" = %s."%s";' %  (view_name, layer_name, dt.table_name, layer_name, dt.table_name, layer_name, layer_attribute.attribute, dt.table_name, table_attribute.attribute)
     double_view_name = "view_%s" % view_name
     double_view_sql = "create view %s as select * from %s" % (double_view_name, view_name)
+    matched_count_sql = 'select count(%s) from %s where %s.%s in (select "%s" from %s);' % (table_attribute.attribute, dt.table_name, dt.table_name, table_attribute.attribute, layer_attribute.attribute, layer_name)
+    unmatched_count_sql = 'select count(%s) from %s where %s.%s not in (select "%s" from %s);' % (table_attribute.attribute, dt.table_name, dt.table_name, table_attribute.attribute, layer_attribute.attribute, layer_name)
+    unmatched_list_sql = 'select %s from %s where %s.%s not in (select "%s" from %s) limit 100;' % (table_attribute.attribute, dt.table_name, dt.table_name, table_attribute.attribute, layer_attribute.attribute, layer_name)
     tj, created = TableJoin.objects.get_or_create(source_layer=layer,datatable=dt, table_attribute=table_attribute, layer_attribute=layer_attribute, view_name=double_view_name)
     tj.view_sql = view_sql
 
@@ -164,6 +167,12 @@ def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute
         cur.execute('drop materialized view if exists %s;' % view_name) 
         cur.execute(view_sql)
         cur.execute(double_view_sql)
+        cur.execute(matched_count_sql)
+        tj.matched_records_count = cur.fetchone()[0]
+        cur.execute(unmatched_count_sql)
+        tj.unmatched_records_count = int(cur.fetchone()[0])
+        cur.execute(unmatched_list_sql)
+        tj.unmatched_records_list = ",".join([r[0] for r in cur.fetchall()])
         conn.commit()
         conn.close()
     except Exception as e:
