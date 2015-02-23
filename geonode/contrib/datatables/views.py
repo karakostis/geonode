@@ -73,6 +73,8 @@ def datatable_detail(request, dt_id):
 def jointargets(request):
     if len(request.GET.keys()) > 0:
         kwargs = {}
+        if request.GET.get('title'):
+            kwargs['layer__title__icontains'] = request.GET.get('title')
         if request.GET.get('type'):
             kwargs['geocode_type__name__icontains'] = request.GET.get('type')
         if request.GET.get('start_year'):
