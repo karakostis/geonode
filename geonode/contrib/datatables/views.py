@@ -13,7 +13,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from .models import DataTable, JoinTarget, TableJoin 
 from .forms import UploadDataTableForm
-from .utils import process_csv_file, setup_join
+from .utils import process_csv_file, setup_join, create_point_col_from_lat_lon
 
 @login_required
 @csrf_exempt
@@ -194,3 +194,22 @@ def datatable_upload_and_join_api(request):
     except:
         traceback.print_exc(sys.exc_info())
         return HttpResponse("Not yet")
+
+@login_required
+@csrf_exempt
+def datatable_upload_lat_lon_api(request):
+    try:
+        resp = datatable_upload_api(request)
+        upload_return_dict = json.loads(resp.content)
+        if upload_return_dict['success'] != True:
+            return HttpResponse(json.dumps(upload_return_dict), mimetype='application/json', status=400)
+    except:
+        traceback.print_exc(sys.exc_info())
+        return HttpResponse(json.dumps({'msg':'Uncaught error ingesting Data Table', 'success':False}), mimetype='application/json', status=400)
+
+    try:
+        layer, msg = create_point_col_from_lat_lon(upload_return_dict['datatable_name'], request.POST.get('lat_column'), request.POST.get('lon_column'))
+        return HttpResponse(json.dumps(upload_return_dict), mimetype='application/json', status=200)
+    except:
+        traceback.print_exc(sys.exc_info())
+        return HttpResponse(json.dumps({'msg':'Uncaught error ingesting Data Table', 'success':False}), mimetype='application/json', status=400)

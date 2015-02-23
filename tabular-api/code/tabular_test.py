@@ -19,6 +19,7 @@ class TabularTest:
         self.login_url =  self.base_url + "/account/login/"
         self.csv_upload_url  = self.base_url + '/datatables/api/upload'
         self.upload_and_join_url = self.base_url + '/datatables/api/upload_and_join'
+        self.upload_lat_lon_url = self.base_url + '/datatables/api/upload_lat_lon'
         self.shp_layer_upload_url = self.base_url + '/layers/upload'
         self.join_datatable_url = self.base_url + '/datatables/api/join'
         
@@ -138,6 +139,29 @@ class TabularTest:
         response = self.client.post(self.join_datatable_url, data=join_props)
         print response.content
 
+    def upload_csv_with_lat_lon(self, fname_to_upload, layer_props):
+        msgt('upload_lat_lon: %s' % self.upload_lat_lon_url)
+
+        files = {'uploaded_file': open(fname_to_upload,'rb')}
+
+        response = self.client.post(self.upload_lat_lon_url\
+                    , data=layer_props
+                    , files=files)
+
+        print response.content
+        if response.status_code == 200:
+            try:
+                resp_dict = json.loads(response.content)
+                datatable = resp_dict['datatable_name']
+                print datatable
+            except:
+                print sys.exc_info()[0]
+                return None
+        else:
+            resp_dict = json.loads(response.content)
+            print "Server Error: " + resp_dict['msg']
+            return None
+
     def load_csv_directory():
         file_list = glob.glob(INPUT_DIR + "/*.csv")
    
@@ -156,10 +180,9 @@ if __name__=='__main__':
     tr.login_for_cookie()
 
     # --Upload Layers to test with--
-
     #layer = tr.add_shapefile_layer('tabular-api/input/tl_2014_25_tract/', 'tl_2014_25_tract')
-    layer = tr.add_shapefile_layer('scratch/shape/', 'tl_2013_06_tract')
-    print layer
+    #layer = tr.add_shapefile_layer('scratch/shape/', 'tl_2013_06_tract')
+    #print layer
 
     # --Upload csv files to test with--
     #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
@@ -179,3 +202,7 @@ if __name__=='__main__':
     #join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
     #datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
     #print datatable, joinlayer
+
+    # --Upload CSV with Lat/Lon--
+    layer_props = {'title': 'Sierra Leone Health Facilities', 'lat_column':'Latitude', 'lon_column':'Longitude'}
+    layer = tr.upload_csv_with_lat_lon('scratch/csv/sle_heal_pt_unmeer_ccc.csv', layer_props)

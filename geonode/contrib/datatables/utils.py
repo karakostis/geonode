@@ -123,6 +123,85 @@ def process_csv_file(instance, delimiter=",", no_header_row=False):
     
     return instance, ""
 
+def create_point_col_from_lat_lon(table_name, lat_column, lon_column):
+    try:
+        dt = DataTable.objects.get(table_name=table_name)
+    except:
+        msg = "Error: (%s) %s" % (str(e), table_name)
+        return None, msg
+
+    alter_table_sql = "ALTER TABLE %s ADD COLUMN geom geometry(POINT,4326);" % (table_name)
+    update_table_sql = "UPDATE %s SET geom = ST_SetSRID(ST_MakePoint(%s,%s),4326);" % (table_name, lon_column, lat_column)
+    create_index_sql = "CREATE INDEX idx_%s_geom ON %s USING GIST(geom);" % (table_name, table_name)
+
+    try:
+        db = ogc_server_settings.datastore_db
+        conn = psycopg2.connect(
+            "dbname='" +
+            db['NAME'] +
+            "' user='" +
+            db['USER'] +
+            "'  password='" +
+            db['PASSWORD'] +
+            "' port=" +
+            db['PORT'] +
+            " host='" +
+            db['HOST'] +
+            "'")
+        cur = conn.cursor()
+        cur.execute(alter_table_sql)
+        cur.execute(update_table_sql)
+        cur.execute(create_index_sql) 
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        conn.close()
+        msg =  "Error Creating Point Column from Latitude and Longitude %s" % (str(e[0]))
+        return None, msg
+
+    # Create the Layer in GeoServer from the table 
+    try:
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest",
+                          _user, _password)
+        workspace = cat.get_workspace(settings.DEFAULT_WORKSPACE)
+        ds_list = cat.get_xml(workspace.datastore_url)
+        datastores = [datastore_from_index(cat, workspace, n) for n in ds_list.findall("dataStore")]
+        ds = None
+        for datastore in datastores:
+            if datastore.name == "datastore":
+                ds = datastore
+        ft = cat.publish_featuretype(table_name, ds, "EPSG:4326", srs="EPSG:4326")
+        cat.save(ft)
+    except Exception as e:
+        tj.delete()
+        msg = "Error creating GeoServer layer for %s: %s" % (table_name, str(e))
+        return None, msg
+
+    # Create the Layer in GeoNode from the GeoServer Layer
+    try:
+        signals.pre_save.disconnect(geoserver_pre_save, sender=Layer)
+        layer, created = Layer.objects.get_or_create(name=table_name, defaults={
+            "workspace": workspace.name,
+            "store": ds.name,
+            "storeType": ds.resource_type,
+            "typename": "%s:%s" % (workspace.name.encode('utf-8'), ft.name.encode('utf-8')),
+            "title": ft.title or 'No title provided',
+            "abstract": ft.abstract or 'No abstract provided',
+            "uuid": str(uuid.uuid4()),
+            "bbox_x0": Decimal(ft.latlon_bbox[0]),
+            "bbox_x1": Decimal(ft.latlon_bbox[1]),
+            "bbox_y0": Decimal(ft.latlon_bbox[2]),
+            "bbox_y1": Decimal(ft.latlon_bbox[3])
+        })
+        signals.pre_save.connect(geoserver_pre_save, sender=Layer) 
+        set_attributes(layer, overwrite=True)
+    except Exception as e:
+        msg = "Error creating GeoNode layer for %s: %s" % (table_name, str(e))
+        return None, msg
+
+    return layer, ""
+    
+
 def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute_name):
 
     # Setup the Table Join in GeoNode
