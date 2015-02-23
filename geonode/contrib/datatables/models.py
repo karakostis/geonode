@@ -69,6 +69,7 @@ class JoinTarget(models.Model):
     attribute = models.ForeignKey(Attribute)
     geocode_type = models.ForeignKey(GeocodeType, on_delete=models.PROTECT)
     type = models.ForeignKey(JoinTargetFormatType, null=True, blank=True)
+    year = models.IntegerField(null=True, blank=True)
     
     def __unicode__(self):
         return self.layer.title
@@ -82,7 +83,7 @@ class JoinTarget(models.Model):
             id=self.id, layer=self.layer.typename,
             attribute={'attribute':self.attribute.attribute, 'type':self.attribute.attribute_type},
             type=type,
-            category=self.category)
+            geocode_type=self.geocode_type.name)
 
 class TableJoin(models.Model):
     """

@@ -107,6 +107,7 @@ class TabularTest:
                         , files=files\
                         , data={'csrfmiddlewaretoken':csrftoken\
                                     , 'permissions':perms\
+                                    , 'charset': 'UTF-8'\
                                 }\
                         )
 
@@ -175,6 +176,6 @@ if __name__=='__main__':
     #tr.join_datatable_to_layer(join_props)
 
     # --Upload and Join--
-    join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
-    datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
-    print datatable, joinlayer
+    #join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
+    #datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
+    #print datatable, joinlayer

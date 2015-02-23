@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DataTable, TableJoin, JoinTarget, JoinTargetFormatType
+from .models import DataTable, TableJoin, JoinTarget, JoinTargetFormatType, GeocodeType
 
 class DataTableAdmin(admin.ModelAdmin):
     model = DataTable
@@ -21,3 +21,4 @@ admin.site.register(DataTable, DataTableAdmin)
 admin.site.register(TableJoin, TableJoinAdmin)
 admin.site.register(JoinTarget, JoinTargetAdmin)
 admin.site.register(JoinTargetFormatType)
+admin.site.register(GeocodeType)

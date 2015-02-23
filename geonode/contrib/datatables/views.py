@@ -71,9 +71,27 @@ def datatable_detail(request, dt_id):
 
 @login_required
 def jointargets(request):
-    jts = JoinTarget.objects.all()
-    results = [ob.as_json() for ob in JoinTarget.objects.all()] 
-    return HttpResponse(json.dumps(results), mimetype="application/json")
+    if len(request.GET.keys()) > 0:
+        kwargs = {}
+        if request.GET.get('type'):
+            kwargs['geocode_type__name__icontains'] = request.GET.get('type')
+        if request.GET.get('start_year'):
+            if request.GET.get('start_year').isdigit():
+                kwargs['year__gte'] = request.GET.get('start_year')
+            else:
+                return HttpResponse(json.dumps({'success': False, 'msg':'Invalid Start Year'}), mimetype="application/json")
+        if request.GET.get('end_year'):
+            if request.GET.get('end_year').isdigit():
+                kwargs['year__lte'] = request.GET.get('end_year')
+            else:
+                return HttpResponse(json.dumps({'success': False, 'msg':'Invalid End Year'}), mimetype="application/json")
+        jts = JoinTarget.objects.filter(**kwargs) 
+        results = [ob.as_json() for ob in jts] 
+        return HttpResponse(json.dumps(results), mimetype="application/json")
+    else:
+        jts = JoinTarget.objects.all()
+        results = [ob.as_json() for ob in jts] 
+        return HttpResponse(json.dumps(results), mimetype="application/json")
 
 @login_required
 @csrf_exempt
