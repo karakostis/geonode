@@ -16,11 +16,11 @@ class TabularTest:
     def __init__(self, base_url="http://localhost:8000"):
         self.client = requests.session()
         self.base_url = base_url
-        self.login_url =  self.base_url + "/account/login/"
+        self.login_url =  self.base_url + "/accounts/login/"
         self.csv_upload_url  = self.base_url + '/datatables/api/upload'
         self.upload_and_join_url = self.base_url + '/datatables/api/upload_and_join'
         self.upload_lat_lon_url = self.base_url + '/datatables/api/upload_lat_lon'
-        self.shp_layer_upload_url = self.base_url + '/layers/upload'
+        self.shp_layer_upload_url = self.base_url + '/data/upload'
         self.join_datatable_url = self.base_url + '/datatables/api/join'
         
         #self.datatable_name = None
@@ -30,7 +30,8 @@ class TabularTest:
         msgt('login_for_cookie: %s' % self.login_url)
 
         # Retrieve the CSRF token first
-        self.client.get(self.login_url)  # sets the cookie
+        resp = self.client.get(self.login_url)  # sets the cookie
+        print resp
         csrftoken = self.client.cookies['csrftoken']
 
         login_data = dict(username="admin", password="admin", csrfmiddlewaretoken=csrftoken)
@@ -59,6 +60,7 @@ class TabularTest:
                 print sys.exc_info()[0]
                 return None 
         else:
+            print response.content
             resp_dict = json.loads(response.content)
             print "Server Error: " + resp_dict['msg']
             return None
@@ -113,9 +115,12 @@ class TabularTest:
                         )
 
         print response.content
-        new_layer_name = json.loads(response.content)['url'].split('/')[2].replace('%3A', ':')
-        print new_layer_name
-        return new_layer_name
+        try:
+            new_layer_name = json.loads(response.content)['url'].split('/')[2].replace('%3A', ':')
+            print new_layer_name
+            return new_layer_name
+        except:
+            return None
         
     def join_datatable_to_layer(self, join_props):
         """        
@@ -199,10 +204,10 @@ if __name__=='__main__':
     #tr.join_datatable_to_layer(join_props)
 
     # --Upload and Join--
-    #join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
-    #datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
-    #print datatable, joinlayer
+    join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract_whv', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
+    datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
+    print datatable, joinlayer
 
     # --Upload CSV with Lat/Lon--
-    layer_props = {'title': 'Sierra Leone Health Facilities', 'lat_column':'Latitude', 'lon_column':'Longitude'}
-    layer = tr.upload_csv_with_lat_lon('scratch/csv/sle_heal_pt_unmeer_ccc.csv', layer_props)
+    #layer_props = {'title': 'Sierra Leone Health Facilities', 'lat_column':'Latitude', 'lon_column':'Longitude'}
+    #layer = tr.upload_csv_with_lat_lon('scratch/csv/sle_heal_pt_unmeer_ccc.csv', layer_props)
