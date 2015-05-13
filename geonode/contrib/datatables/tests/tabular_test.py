@@ -20,7 +20,7 @@ class TabularTest:
         self.csv_upload_url  = self.base_url + '/datatables/api/upload'
         self.upload_and_join_url = self.base_url + '/datatables/api/upload_and_join'
         self.upload_lat_lon_url = self.base_url + '/datatables/api/upload_lat_lon'
-        self.shp_layer_upload_url = self.base_url + '/data/upload'
+        self.shp_layer_upload_url = self.base_url + '/layers/upload'
         self.join_datatable_url = self.base_url + '/datatables/api/join'
         
         #self.datatable_name = None
@@ -190,9 +190,9 @@ if __name__=='__main__':
     #print layer
 
     # --Upload csv files to test with--
-    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
-    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
-    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
+    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
+    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
+    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
     
     # --Join CSV to existing layer--
     # Invalid Props
@@ -204,9 +204,9 @@ if __name__=='__main__':
     #tr.join_datatable_to_layer(join_props)
 
     # --Upload and Join--
-    join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract_whv', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
-    datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
-    print datatable, joinlayer
+    #join_props = {'title': 'CA Population', 'layer_typename': 'geonode:tl_2013_06_tract_whv', 'table_attribute': 'geoid2', 'layer_attribute': 'GEOID'} 
+    #datatable, joinlayer = tr.upload_and_join('scratch/ca_tracts_pop.csv', join_props)
+    #print datatable, joinlayer
 
     # --Upload CSV with Lat/Lon--
     #layer_props = {'title': 'Sierra Leone Health Facilities', 'lat_column':'Latitude', 'lon_column':'Longitude'}
