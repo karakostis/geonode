@@ -15,7 +15,7 @@ class DataTable(ResourceBase):
     """
 
     # internal fields
-    table_name = models.CharField(max_length=255, unique=True)
+    table_name = models.CharField(max_length=255)
     tablespace = models.CharField(max_length=255)
     uploaded_file = models.FileField(upload_to="datatables")
     create_table_sql = models.TextField(null=True, blank=True)
