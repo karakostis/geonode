@@ -35,16 +35,21 @@
     <dd>{{ resource.display_type }}</dd>
     {% endif %}
 
-    {% if resource.keyword_list %}
+    {% if resource.keywords %}
     <dt>{% trans "Keywords" %}</dt>
-    <dd>{% for keyword in resource.keyword_list %}
-        {{ keyword }}
-        {% endfor %}</dd>
+    <dd>
+      {% for keyword in resource.keywords.all %}
+	<a href="{% url "search" %}?keywords__slug__in={{ keyword.slug }}" >
+          {{ keyword.name }}
+        </a>
+        {% if not forloop.last %},{% endif %}
+      {% endfor %}
+    </dd>
     {% endif %}
           
     {% if resource.category %}
     <dt>{% trans "Category" %}</dt>
-    <dd><a href="/search/?category__identifier__in={{ resource.category.identifier }}">{{ resource.category }}</a> {% if resource.category.description %}<a href="#category-more" data-toggle="collapse" data-target=".category-more"><i class="fa fa-info-circle"></i></a>{% endif %}</dd>
+    <dd><a href="{% url "search" %}?category__identifier__in={{ resource.category.identifier }}">{{ resource.category }}</a> {% if resource.category.description %}<a href="#category-more" data-toggle="collapse" data-target=".category-more"><i class="fa fa-info-circle"></i></a>{% endif %}</dd>
       {% if resource.category.description %}
       <dd class="category-more collapse">
         {{ resource.category.description }}
@@ -54,7 +59,14 @@
   
     {% if resource.regions.all %}
     <dt>{% trans "Regions" %}</dt>
-    <dd>{{ resource.regions.all|join:", " }}</dd>
+    <dd>
+      {% for region in resource.regions.all %}
+        <a href="{% url "search" %}?regions__name__in={{ region.name }}">
+          {{ region.name }}
+        </a>
+        {% if not forloop.last %},{% endif %}
+      {% endfor %}
+    </dd>
     {% endif %}
   
     {% if resource.owner %}

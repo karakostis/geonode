@@ -27,6 +27,8 @@ import re
 import os
 import glob
 import sys
+import tempfile
+import zipfile
 
 from osgeo import gdal
 
@@ -181,7 +183,7 @@ def get_valid_name(layer_name):
     name = _clean_string(layer_name)
     proposed_name = name
     count = 1
-    while Layer.objects.filter(name=proposed_name).count() > 0:
+    while Layer.objects.filter(name=proposed_name).exists():
         proposed_name = "%s_%d" % (name, count)
         count = count + 1
         logger.info('Requested name already used; adjusting name '
@@ -287,8 +289,25 @@ def get_bbox(filename):
     return [bbox_x0, bbox_x1, bbox_y0, bbox_y1]
 
 
+def unzip_file(upload_file, extension='.shp', tempdir=None):
+    """
+    Unzips a zipfile into a temporary directory and returns the full path of the .shp file inside (if any)
+    """
+    absolute_base_file = None
+    if tempdir is None:
+        tempdir = tempfile.mkdtemp()
+
+    the_zip = zipfile.ZipFile(upload_file)
+    the_zip.extractall(tempdir)
+    for item in the_zip.namelist():
+        if item.endswith(extension):
+            absolute_base_file = os.path.join(tempdir, item)
+
+    return absolute_base_file
+
+
 def file_upload(filename, name=None, user=None, title=None, abstract=None,
-                skip=True, overwrite=False, keywords=[], charset='UTF-8'):
+                skip=True, overwrite=False, keywords=[], charset='UTF-8', category=None):
     """Saves a layer in GeoNode asking as little information as possible.
        Only filename is required, user and title are optional.
     """
@@ -309,6 +328,10 @@ def file_upload(filename, name=None, user=None, title=None, abstract=None,
     # Create a name from the title if it is not passed.
     if name is None:
         name = slugify(title).replace('-', '_')
+
+    if category is not None:
+        category = TopicCategory.objects.get(
+                    identifier=category)
 
     # Generate a name that is not taken if overwrite is False.
     valid_name = get_valid_layer_name(name, overwrite)
@@ -344,6 +367,7 @@ def file_upload(filename, name=None, user=None, title=None, abstract=None,
         'bbox_y0': bbox_y0,
         'bbox_y1': bbox_y1,
         'is_published': is_published,
+        'category': category
     }
 
     # set metadata
@@ -400,7 +424,7 @@ def file_upload(filename, name=None, user=None, title=None, abstract=None,
 
 def upload(incoming, user=None, overwrite=False,
            keywords=(), skip=True, ignore_errors=True,
-           verbosity=1, console=None):
+           verbosity=1, console=None, category=None, title=None, private=False):
     """Upload a directory of spatial data files to GeoNode
 
        This function also verifies that each layer is in GeoServer.
@@ -469,16 +493,27 @@ def upload(incoming, user=None, overwrite=False,
 
         if save_it:
             try:
+                if zipfile.is_zipfile(filename):
+                    filename = unzip_file(filename)
+
                 layer = file_upload(filename,
                                     user=user,
                                     overwrite=overwrite,
                                     keywords=keywords,
+                                    category=category,
+                                    title=title
                                     )
                 if not existed:
                     status = 'created'
                 else:
                     status = 'updated'
-
+                if private and user:
+                    perm_spec = {"users": {"AnonymousUser": [],
+                                           user.username: ["change_resourcebase_metadata", "change_layer_data",
+                                                           "change_layer_style", "change_resourcebase",
+                                                           "delete_resourcebase", "change_resourcebase_permissions",
+                                                           "publish_resourcebase"]}, "groups": {}}
+                    layer.set_permissions(perm_spec)
             except Exception as e:
                 if ignore_errors:
                     status = 'failed'
