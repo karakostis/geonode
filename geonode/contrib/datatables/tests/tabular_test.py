@@ -16,7 +16,7 @@ class TabularTest:
     def __init__(self, base_url="http://localhost:8000"):
         self.client = requests.session()
         self.base_url = base_url
-        self.login_url =  self.base_url + "/accounts/login/"
+        self.login_url =  self.base_url + "/account/login/"
         self.csv_upload_url  = self.base_url + '/datatables/api/upload'
         self.upload_and_join_url = self.base_url + '/datatables/api/upload_and_join'
         self.upload_lat_lon_url = self.base_url + '/datatables/api/upload_lat_lon'
@@ -190,9 +190,9 @@ if __name__=='__main__':
     #print layer
 
     # --Upload csv files to test with--
-    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
-    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
-    #dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
+    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.csv')
+    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB')
+    dt = tr.upload_csv_file('Boston Income', 'tabular-api/input/boston_income_73g.tab', delimiter_type='TAB', no_header_row=True)
     
     # --Join CSV to existing layer--
     # Invalid Props
