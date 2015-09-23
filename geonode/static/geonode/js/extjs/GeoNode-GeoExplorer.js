@@ -465,6 +465,9 @@ GeoNode.Composer = window.GeoExplorer && Ext.extend(GeoExplorer.Composer, {
             actionTarget: ["layers.contextMenu"]
         }, {
             ptype: "gxp_getfeedfeatureinfo"
+        },{
+			ptype: "gxp_playback",
+			outputTarget: "paneltbar"
         });
         GeoNode.Composer.superclass.loadConfig.apply(this, arguments);
         for (key in this.tools) {
