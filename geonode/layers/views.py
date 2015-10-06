@@ -20,6 +20,7 @@
 
 import os
 import sys
+import string
 import logging
 import shutil
 import traceback
@@ -130,17 +131,15 @@ def layer_upload(request, template='upload/layer_upload.html'):
             'charsets': CHARSETS,
             'is_layer': True,
         }
-        return render_to_response(template,
-                                  RequestContext(request, ctx))
+        category_form = CategoryForm(prefix="category_choice_field", initial=None)
+        return render_to_response(template, {"category_form": category_form}, RequestContext(request, ctx))
     elif request.method == 'POST':
         form = NewLayerUploadForm(request.POST, request.FILES)
         tempdir = None
         errormsgs = []
         out = {'success': False}
-
         if form.is_valid():
             title = form.cleaned_data["layer_title"]
-
             # Replace dots in filename - GeoServer REST API upload bug
             # and avoid any other invalid characters.
             # Use the title if possible, otherwise default to the filename
@@ -149,24 +148,37 @@ def layer_upload(request, template='upload/layer_upload.html'):
             else:
                 name_base, __ = os.path.splitext(
                     form.cleaned_data["base_file"].name)
-
             name = slugify(name_base.replace(".", "_"))
-
             try:
                 # Moved this inside the try/except block because it can raise
                 # exceptions when unicode characters are present.
                 # This should be followed up in upstream Django.
                 tempdir, base_file = form.write_files()
+                topic_id = form.cleaned_data["category"]
+                if topic_id == "":
+                    try:
+                        topic_id = request.META.get("HTTP_COOKIE")
+                        topic_id = string.split(topic_id, " ")[0]
+                        topic_id = string.split(topic_id, ":")[1]
+                        topic_id = string.split(topic_id, ";")[0]
+                    except:
+                        topic_id = "1"
+                topic_category = TopicCategory.objects.get(
+                    id=topic_id
+                )
                 saved_layer = file_upload(
                     base_file,
                     name=name,
                     user=request.user,
                     overwrite=False,
                     charset=form.cleaned_data["charset"],
+                    category=topic_category,
                     abstract=form.cleaned_data["abstract"],
                     title=form.cleaned_data["layer_title"],
                 )
-
+                Layer.objects.filter(name=name).update(
+                    category=topic_category
+                )
             except Exception as e:
                 exception_type, error, tb = sys.exc_info()
                 logger.exception(e)
@@ -190,24 +202,20 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 out['url'] = reverse(
                     'layer_detail', args=[
                         saved_layer.service_typename])
-
                 upload_session = saved_layer.upload_session
                 upload_session.processed = True
                 upload_session.save()
                 permissions = form.cleaned_data["permissions"]
                 if permissions is not None and len(permissions.keys()) > 0:
                     saved_layer.set_permissions(permissions)
-
             finally:
                 if tempdir is not None:
                     shutil.rmtree(tempdir)
         else:
             for e in form.errors.values():
                 errormsgs.extend([escape(v) for v in e])
-
             out['errors'] = form.errors
             out['errormsgs'] = errormsgs
-
         if out['success']:
             status_code = 200
         else:
@@ -232,11 +240,9 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     layer_bbox = layer.bbox
     bbox = [float(coord) for coord in list(layer_bbox[0:4])]
     srid = layer.srid
-
-    # Transform WGS84 to Mercator.
-    config["srs"] = srid if srid != "EPSG:4326" else "EPSG:900913"
-    config["bbox"] = llbbox_to_mercator([float(coord) for coord in bbox])
-
+    config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
+    config["bbox"] = bbox if srid != "EPSG:900913" \
+        else llbbox_to_mercator([float(coord) for coord in bbox])
     config["title"] = layer.title
     config["queryable"] = True
 
@@ -265,7 +271,10 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             id=layer.id).update(popular_count=F('popular_count') + 1)
 
     # center/zoom don't matter; the viewer will center on the layer bounds
-    map_obj = GXPMap(projection="EPSG:900913")
+    if getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913') == "EPSG:4326":
+        map_obj = GXPMap(projection="EPSG:4326")
+    else:
+        map_obj = GXPMap(projection="EPSG:900913")
     NON_WMS_BASE_LAYERS = [
         la for la in default_map_config()[1] if la.ows_url is None]
 

@@ -375,6 +375,9 @@ def run_import(upload_session, async):
     if import_session.state == 'INCOMPLETE':
         if task.state != 'ERROR':
             raise Exception('unknown item state: %s' % task.state)
+    elif import_session.state == 'PENDING' and task.target.store_type == 'coverageStore':
+        if task.state == 'READY':
+            import_session.commit(async)
             
     elif import_session.state == 'PENDING' and task.target.store_type == 'coverageStore':
         if task.state == 'READY':
