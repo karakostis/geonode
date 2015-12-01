@@ -959,24 +959,35 @@ def _create_db_featurestore(name, data, overwrite=False, charset="UTF-8", worksp
     """
     cat = gs_catalog
     dsname = ogc_server_settings.DATASTORE
+
+    ds_exists = False
     try:
         ds = get_store(cat, dsname, workspace=workspace)
-
+        ds_exists = True
     except FailedRequestError:
         ds = cat.create_datastore(dsname, workspace=workspace)
-        db = ogc_server_settings.datastore_db
-        db_engine = 'postgis' if \
-            'postgis' in db['ENGINE'] else db['ENGINE']
-        ds.connection_parameters.update(
-            host=db['HOST'],
-            port=db['PORT'],
-            database=db['NAME'],
-            user=db['USER'],
-            passwd=db['PASSWORD'],
-            dbtype=db_engine
-        )
-        cat.save(ds)
-        ds = get_store(cat, dsname, workspace=workspace)
+
+    db = ogc_server_settings.datastore_db
+    db_engine = 'postgis' if \
+        'postgis' in db['ENGINE'] else db['ENGINE']
+    ds.connection_parameters.update(
+        {'validate connections': 'true',
+         'max connections': '10',
+         'min connections': '1',
+         'fetch size': '1000',
+         'host': db['HOST'],
+         'port': db['PORT'],
+         'database': db['NAME'],
+         'user': db['USER'],
+         'passwd': db['PASSWORD'],
+         'dbtype': db_engine}
+    )
+
+    if ds_exists:
+        ds.save_method = "PUT"
+
+    cat.save(ds)
+    ds = get_store(cat, dsname, workspace=workspace)
 
     try:
         cat.add_data_to_store(ds, name, data,
@@ -1421,8 +1432,12 @@ def wps_execute_layer_attribute_statistics(layer_name, field):
                                'layer_name': 'geonode:%s' % layer_name,
                                'field': field
                                })
-
-    response = http_post(url, request, timeout=ogc_server_settings.TIMEOUT)
+    response = http_post(
+        url,
+        request,
+        timeout=ogc_server_settings.TIMEOUT,
+        username=ogc_server_settings.credentials.username,
+        password=ogc_server_settings.credentials.password)
 
     exml = etree.fromstring(response)
 
@@ -1443,16 +1458,24 @@ def wps_execute_layer_attribute_statistics(layer_name, field):
 
     result['unique_values'] = 'NA'
 
+    return result
+
     # TODO: find way of figuring out threshold better
-    if result['Count'] < 10000:
-        request = render_to_string('layers/wps_execute_gs_unique.xml', {
-                                   'layer_name': 'geonode:%s' % layer_name,
-                                   'field': field
-                                   })
+    # Looks incomplete what is the purpose if the nex lines?
 
-        response = http_post(url, request, timeout=ogc_server_settings.TIMEOUT)
+    # if result['Count'] < 10000:
+    #     request = render_to_string('layers/wps_execute_gs_unique.xml', {
+    #                                'layer_name': 'geonode:%s' % layer_name,
+    #                                'field': field
+    #                                })
 
-        exml = etree.fromstring(response)
+    #     response = http_post(
+    #     url,
+    #     request,
+    #     timeout=ogc_server_settings.TIMEOUT,
+    #     username=ogc_server_settings.credentials.username,
+    #     password=ogc_server_settings.credentials.password)
+    #     exml = etree.fromstring(response)
 
 
 def style_update(request, url):
