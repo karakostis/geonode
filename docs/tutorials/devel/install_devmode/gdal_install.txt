@@ -1,4 +1,4 @@
-.. _install_devmode:
+.. _install_gdal_devmode:
 
 Install GDAL for Development
 ============================

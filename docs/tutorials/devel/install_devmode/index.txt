@@ -6,7 +6,7 @@ Install GeoNode for Development
 
 In order to install Geonode 2.0 in developing mode on Ubuntu 12.04 the following steps are required:
 
-For Windows: (:ref:`_install_win_devmode`)
+.. note:: For Windows: (:ref:`install_win_devmode`)
 
 #. Retrieve latest apt-get list
 #. Install build tools and libraries
@@ -191,7 +191,7 @@ For Windows: (:ref:`_install_win_devmode`)
 
     $ paver start -b 1.1.1.1:8000
    
-   If the start fails because of an import error related to osgeo, then please consult the `GDAL for Development Guide <http://docs.geonode.org/en/latest/tutorials/devel/install_devmode/gdal_install.html>`_. 
+   If the start fails because of an import error related to osgeo, then please consult the :ref:`install_gdal_devmode`. 
 
 #. To stop the server
 
