@@ -52,10 +52,11 @@ TIME_REGEX = (
 )
 
 TIME_REGEX_FORMAT = {
-    '[0-9]{8}': '%Y%m%d', 
-    '[0-9]{8}T[0-9]{6}': '%Y%m%dT%H%M%S', 
+    '[0-9]{8}': '%Y%m%d',
+    '[0-9]{8}T[0-9]{6}': '%Y%m%dT%H%M%S',
     '[0-9]{8}T[0-9]{6}Z': '%Y%m%dT%H%M%SZ'
 }
+
 
 class Style(models.Model):
 
@@ -98,6 +99,12 @@ class Layer(ResourceBase):
     storeType = models.CharField(max_length=128)
     name = models.CharField(max_length=128)
     typename = models.CharField(max_length=128, null=True, blank=True)
+
+    is_mosaic = models.BooleanField(default=False)
+    has_time = models.BooleanField(default=False)
+    has_elevation = models.BooleanField(default=False)
+    time_regex = models.CharField(max_length=128, null=True, blank=True, choices=TIME_REGEX)
+    elevation_regex = models.CharField(max_length=128, null=True, blank=True)
 
     is_mosaic = models.BooleanField(default=False)
     has_time = models.BooleanField(default=False)

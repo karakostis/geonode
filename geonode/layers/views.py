@@ -129,7 +129,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
     if request.method == 'GET':
         mosaics = Layer.objects.filter(is_mosaic=True).order_by('name')
         ctx = {
-            'mosaics' : mosaics,
+            'mosaics': mosaics,
             'charsets': CHARSETS,
             'is_layer': True,
         }
@@ -273,21 +273,21 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             cat._cache.clear()
             store = cat.get_store(layer.name)
             coverages = cat.mosaic_coverages(store)
-            
+
             filter = None
             try:
                 if request.GET["filter"]:
                     filter = request.GET["filter"]
             except:
                 pass
-                
-            schema = cat.mosaic_coverage_schema(coverages['coverages']['coverage'][0]['name'], store)
+
             offset = 10 * (request.page - 1)
-            granules = cat.mosaic_granules(coverages['coverages']['coverage'][0]['name'], store, limit=10, offset=offset, filter=filter)
+            granules = cat.mosaic_granules(coverages['coverages']['coverage'][0]['name'], store, limit=10,
+                                           offset=offset, filter=filter)
             all_granules = cat.mosaic_granules(coverages['coverages']['coverage'][0]['name'], store, filter=filter)
         except:
-            granules = {"features":[]}
-            all_granules = {"features":[]}
+            granules = {"features": []}
+            all_granules = {"features": []}
 
     context_dict = {
         "resource": layer,

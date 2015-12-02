@@ -1688,6 +1688,7 @@ def _fixup_ows_url(thumb_spec):
     repl = '"' + ogc_server_settings.LOCATION
     return re.sub(gspath, repl, thumb_spec)
 
+
 def mosaic_delete_first_granule(cat, layer):
     # - since GeoNode will uploade the first granule again through the Importer, we need to /
     #   delete the one created by the gs_config
@@ -1699,10 +1700,12 @@ def mosaic_delete_first_granule(cat, layer):
 
     cat.mosaic_delete_granule(coverages['coverages']['coverage'][0]['name'], store, granule_id)
 
-def set_time_dimension(cat, layer, time_presentation, time_presentation_res, time_presentation_default_value, time_presentation_reference_value):
+
+def set_time_dimension(cat, layer, time_presentation, time_presentation_res, time_presentation_default_value,
+                       time_presentation_reference_value):
     # configure the layer time dimension as LIST
     cat._cache.clear()
-    
+
     presentation = time_presentation
     if not presentation:
         presentation = "LIST"
@@ -1715,8 +1718,9 @@ def set_time_dimension(cat, layer, time_presentation, time_presentation_res, tim
     if time_presentation_default_value and not time_presentation_default_value == "":
         strategy = time_presentation_default_value
 
-    timeInfo = DimensionInfo("time", "true", presentation, resolution, "ISO8601", None, attribute="time", strategy=strategy, reference_value=time_presentation_reference_value)
+    timeInfo = DimensionInfo("time", "true", presentation, resolution, "ISO8601", None, attribute="time",
+                             strategy=strategy, reference_value=time_presentation_reference_value)
 
     resource = cat.get_layer(layer).resource
-    resource.metadata = {'time':timeInfo}
+    resource.metadata = {'time': timeInfo}
     cat.save(resource)

@@ -278,7 +278,7 @@ def save_step_view(req, session):
             append_to_mosaic_name=form.cleaned_data['append_to_mosaic_name'],
             mosaic_time_regex=form.cleaned_data['mosaic_time_regex'],
             mosaic_time_value=form.cleaned_data['mosaic_time_value'],
-            time_presentation=form.cleaned_data['time_presentation'], 
+            time_presentation=form.cleaned_data['time_presentation'],
             time_presentation_res=form.cleaned_data['time_presentation_res'],
             time_presentation_default_value=form.cleaned_data['time_presentation_default_value'],
             time_presentation_reference_value=form.cleaned_data['time_presentation_reference_value']
@@ -578,6 +578,13 @@ if not _ALLOW_TIME_STEP:
         steps = list(steps)
         if 'time' in steps:
             steps.remove('time')
+        _pages[t] = tuple(steps)
+
+if not _ALLOW_MOSAIC_STEP:
+    for t, steps in _pages.items():
+        steps = list(steps)
+        if 'mosaic' in steps:
+            steps.remove('mosaic')
         _pages[t] = tuple(steps)
 
 if not _ALLOW_MOSAIC_STEP:

@@ -68,8 +68,8 @@ class Upload(models.Model):
     # hold a dict of any intermediate Layer metadata - not used for now
     metadata = models.TextField(null=True)
 
-    mosaic = models.BooleanField(default=False), 
-    append_to_mosaic_opts = models.BooleanField(default=False), 
+    mosaic = models.BooleanField(default=False),
+    append_to_mosaic_opts = models.BooleanField(default=False),
     append_to_mosaic_name = models.CharField(max_length=128, null=True),
 
     mosaic_time_regex = models.CharField(max_length=128, null=True)
