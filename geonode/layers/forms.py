@@ -20,14 +20,16 @@
 
 import os
 import tempfile
-import autocomplete_light
 import zipfile
-
+import autocomplete_light
 
 from django import forms
 from django.utils import simplejson as json
 from geonode.layers.utils import unzip_file
 from geonode.layers.models import Layer, Attribute
+
+autocomplete_light.autodiscover() # flake8: noqa
+
 from geonode.base.forms import ResourceBaseForm
 
 
@@ -54,7 +56,6 @@ class LayerForm(ResourceBaseForm):
             'styles',
             'upload_session',
             'service',)
-        widgets = autocomplete_light.get_widgets_dict(Layer)
 
 
 class LayerUploadForm(forms.Form):
@@ -65,6 +66,7 @@ class LayerUploadForm(forms.Form):
     xml_file = forms.FileField(required=False)
 
     charset = forms.CharField(required=False)
+    metadata_uploaded_preserve = forms.BooleanField(required=False)
 
     spatial_files = (
         "base_file",
@@ -134,7 +136,9 @@ class LayerUploadForm(forms.Form):
                     if xml_file.find('.shp') != -1:
                         # force rename of file so that file.shp.xml doesn't
                         # overwrite as file.shp
-                        cleaned["xml_file"].name = '%s.xml' % base_name
+                        if cleaned.get("xml_file"):
+                            cleaned["xml_file"].name = '%s.xml' % base_name
+
         return cleaned
 
     def write_files(self):
@@ -166,6 +170,7 @@ class NewLayerUploadForm(LayerUploadForm):
     layer_title = forms.CharField(required=False)
     permissions = JSONField()
     charset = forms.CharField(required=False)
+    metadata_uploaded_preserve = forms.BooleanField(required=False)
 
     spatial_files = (
         "base_file",

@@ -21,11 +21,15 @@
 # Django settings for the GeoNode project.
 import os
 from kombu import Queue
-from celery_app import app  # flake8: noqa
+import geonode
+from geonode.celery_app import app  # flake8: noqa
 
 #
 # General Django development settings
 #
+
+# GeoNode Version
+VERSION = geonode.get_version()
 
 # Defines the directory that contains the settings file as the PROJECT_ROOT
 # It is used for relative settings elsewhere.
@@ -97,7 +101,7 @@ LANGUAGES = (
     ('km', 'Khmer'),
     ('pl', 'Polish'),
     ('sv', 'Swedish'),
-    ('th', 'Thai'),
+    ('th', 'ไทย'),
     ('uk', 'Ukranian'),
     ('si', 'Sinhala'),
     ('ta', 'Tamil'),
@@ -200,41 +204,19 @@ LOGOUT_URL = '/account/logout/'
 # Documents application
 ALLOWED_DOCUMENT_TYPES = [
     'doc', 'docx', 'gif', 'jpg', 'jpeg', 'ods', 'odt', 'odp', 'pdf', 'png', 'ppt',
-    'pptx', 'rar', 'tif', 'tiff', 'txt', 'xls', 'xlsx', 'xml', 'zip', 'gz'
+    'pptx', 'rar', 'sld', 'tif', 'tiff', 'txt', 'xls', 'xlsx', 'xml', 'zip', 'gz'
 ]
 MAX_DOCUMENT_SIZE = 2  # MB
-DOCUMENT_TYPE_MAP = {
-    'txt': 'text',
-    'log': 'text',
-    'doc': 'text',
-    'docx': 'text',
-    'ods': 'text',
-    'odt': 'text',
-    'xls': 'text',
-    'xlsx': 'text',
-    'xml': 'text',
 
-    'gif': 'image',
-    'jpg': 'image',
-    'jpeg': 'image',
-    'png': 'image',
-    'tif': 'image',
-    'tiff': 'image',
+# DOCUMENT_TYPE_MAP and DOCUMENT_MIMETYPE_MAP update enumerations in
+# documents/enumerations.py and should only
+# need to be uncommented if adding other types
+# to settings.ALLOWED_DOCUMENT_TYPES
 
-    'odp': 'presentation',
-    'ppt': 'presentation',
-    'pptx': 'presentation',
-    'pdf': 'presentation',
-
-    'rar': 'archive',
-    'gz': 'archive',
-    'zip': 'archive',
-}
-
+# DOCUMENT_TYPE_MAP = {}
+# DOCUMENT_MIMETYPE_MAP = {}
 
 GEONODE_APPS = (
-
-
     # GeoNode internal apps
     'geonode.people',
     'geonode.base',
@@ -249,11 +231,6 @@ GEONODE_APPS = (
     'geonode.groups',
     'geonode.services',
 
-    # GeoNode Contrib Apps
-
-    # 'geonode.contrib.dynamic',
-    'geonode.contrib.datatables',
-
     # GeoServer Apps
     # Geoserver needs to come last because
     # it's signals may rely on other apps' signals.
@@ -261,6 +238,21 @@ GEONODE_APPS = (
     'geonode.upload',
     'geonode.tasks'
 )
+
+GEONODE_CONTRIB_APPS = (
+    # GeoNode Contrib Apps
+    'geonode.contrib.dynamic',
+    'geonode.contrib.datatables',
+    'geonode.contrib.exif',
+    'geonode.contrib.favorite',
+    'geonode.contrib.geogig',
+    'geonode.contrib.geosites',
+    'geonode.contrib.nlp',
+    'geonode.contrib.slack'
+)
+
+# Uncomment the following line to enable contrib apps
+# GEONODE_APPS = GEONODE_APPS + GEONODE_CONTRIB_APPS
 
 INSTALLED_APPS = (
 
@@ -392,7 +384,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # This middleware allows to print private layers for the users that have 
+    # This middleware allows to print private layers for the users that have
     # the permissions to view them.
     # It sets temporary the involved layers as public before restoring the permissions.
     # Beware that for few seconds the involved layers are public there could be risks.
@@ -551,8 +543,8 @@ CATALOGUE = {
         # 'URL': 'http://localhost:8080/deegree-csw-demo-3.0.4/services',
 
         # login credentials (for GeoNetwork)
-        'USER': 'admin',
-        'PASSWORD': 'admin',
+        # 'USER': 'admin',
+        # 'PASSWORD': 'admin',
     }
 }
 
@@ -568,8 +560,8 @@ PYCSW = {
         #},
         'metadata:main': {
             'identification_title': 'GeoNode Catalogue',
-            'identification_abstract': 'GeoNode is an open source platform that facilitates the creation, sharing, \
-             and collaborative use of geospatial data',
+            'identification_abstract': 'GeoNode is an open source platform that facilitates the creation, sharing, ' \
+            'and collaborative use of geospatial data',
             'identification_keywords': 'sdi,catalogue,discovery,metadata,GeoNode',
             'identification_keywords_type': 'theme',
             'identification_fees': 'None',
@@ -607,6 +599,10 @@ PYCSW = {
 
 # GeoNode javascript client configuration
 
+# default map projection
+# Note: If set to EPSG:4326, then only EPSG:4326 basemaps will work.
+DEFAULT_MAP_CRS = "EPSG:900913"
+
 # Where should newly created maps be focused?
 DEFAULT_MAP_CENTER = (0, 0)
 
@@ -639,13 +635,8 @@ MAP_BASELAYERS = [{
     "name": "naip",
     "group": "background",
     "visibility": False
-}, {
-    "source": {"ptype": "gxp_bingsource"},
-    "name": "AerialWithLabels",
-    "fixed": True,
-    "visibility": False,
-    "group": "background"
-}, {
+}, 
+{
     "source": {"ptype": "gxp_mapboxsource"},
 }]
 
@@ -661,7 +652,7 @@ SOCIAL_ORIGINS = [{
     "css_class":"fb"
 }, {
     "label":"Twitter",
-    "url":"https://twitter.com/share?url={url}",
+    "url":"https://twitter.com/share?url={url}&hashtags={hashtags}",
     "css_class":"tw"
 }, {
     "label":"Google +",
@@ -678,6 +669,15 @@ CKAN_ORIGINS = [{
 }]
 #SOCIAL_ORIGINS.extend(CKAN_ORIGINS)
 
+# Setting TWITTER_CARD to True will enable Twitter Cards
+# https://dev.twitter.com/cards/getting-started
+# Be sure to replace @GeoNode with your organization or site's twitter handle.
+TWITTER_CARD = True
+TWITTER_SITE = '@GeoNode'
+TWITTER_HASHTAGS = ['geonode']
+
+OPENGRAPH_ENABLED = True
+
 # Enable Licenses User Interface
 # Regardless of selection, license field stil exists as a field in the Resourcebase model.
 # Detail Display: above, below, never
@@ -688,6 +688,10 @@ LICENSES = {
     'METADATA': 'verbose',
 }
 
+SRID = {
+    'DETAIL': 'never',
+}
+
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 
 # Require users to authenticate before using Geonode
@@ -696,11 +700,6 @@ LOCKDOWN_GEONODE = False
 # Add additional paths (as regular expressions) that don't require
 # authentication.
 AUTH_EXEMPT_URLS = ()
-
-if LOCKDOWN_GEONODE:
-    MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + \
-        ('geonode.security.middleware.LoginRequiredMiddleware',)
-
 
 # A tuple of hosts the proxy can send requests to.
 PROXY_ALLOWED_HOSTS = ()
@@ -747,6 +746,8 @@ DOWNLOAD_FORMATS_RASTER = [
     'KML',
     'View in Google Earth',
     'Tiles',
+    'GML',
+    'GZIP'
 ]
 
 ACCOUNT_NOTIFY_ON_PASSWORD_CHANGE = False
@@ -764,6 +765,7 @@ CLIENT_RESULTS_LIMIT = 100
 
 # Number of items returned by the apis 0 equals no limit
 API_LIMIT_PER_PAGE = 0
+API_INCLUDE_REGIONS_COUNT = False
 
 LEAFLET_CONFIG = {
     'TILES': [
@@ -786,12 +788,12 @@ LEAFLET_CONFIG = {
     ],
     'PLUGINS': {
         'esri-leaflet': {
-            'js': 'lib/js/esri-leaflet.js',
+            'js': 'lib/js/esri-leaflet.js?v=%s' % VERSION,
             'auto-include': True,
         },
         'leaflet-fullscreen': {
-            'css': 'lib/css/leaflet.fullscreen.css',
-            'js': 'lib/js/Leaflet.fullscreen.min.js',
+            'css': 'lib/css/leaflet.fullscreen.css?v=%s' % VERSION,
+            'js': 'lib/js/Leaflet.fullscreen.min.js?v=%s' % VERSION,
             'auto-include': True,
         },
     }
@@ -799,6 +801,21 @@ LEAFLET_CONFIG = {
 
 # option to enable/disable resource unpublishing for administrators
 RESOURCE_PUBLISHING = False
+
+# Settings for EXIF contrib app
+EXIF_ENABLED = False
+
+# Settings for NLP contrib app
+NLP_ENABLED = False
+NLP_LOCATION_THRESHOLD = 1.0
+NLP_LIBRARY_PATH = "/opt/MITIE/mitielib"
+NLP_MODEL_PATH = "/opt/MITIE/MITIE-models/english/ner_model.dat"
+
+# Settings for Slack contrib app
+SLACK_ENABLED = False
+SLACK_WEBHOOK_URLS = [
+    "https://hooks.slack.com/services/T000/B000/XX"
+]
 
 CACHES = {
     # DUMMY CACHE FOR DEVELOPMENT
@@ -820,6 +837,17 @@ CACHES = {
 LAYER_PREVIEW_LIBRARY = 'geoext'
 
 SERVICE_UPDATE_INTERVAL = 0
+
+SEARCH_FILTERS = {
+    'TEXT_ENABLED': True,
+    'TYPE_ENABLED': True,
+    'CATEGORIES_ENABLED': True,
+    'OWNERS_ENABLED': True,
+    'KEYWORDS_ENABLED': True,
+    'DATE_ENABLED': True,
+    'REGION_ENABLED': True,
+    'EXTENT_ENABLED': True,
+}
 
 # Queue non-blocking notifications.
 NOTIFICATION_QUEUE_ALL = False
@@ -860,6 +888,25 @@ try:
 except ImportError:
     pass
 
+try:
+    BING_LAYER = {    
+        "source": {
+            "ptype": "gxp_bingsource",
+            "apiKey": BING_API_KEY
+        },
+        "name": "AerialWithLabels",
+        "fixed": True,
+        "visibility": False,
+        "group": "background"
+    }
+    MAP_BASELAYERS.append(BING_LAYER)
+except NameError:
+    print "Not enabling BingMaps base layer as a BING_API_KEY is not defined in local_settings.py file."
+
+# Require users to authenticate before using Geonode
+if LOCKDOWN_GEONODE:
+    MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + \
+        ('geonode.security.middleware.LoginRequiredMiddleware',)
 
 #for windows users check if they didn't set GEOS and GDAL in local_settings.py
 #maybe they set it as a windows environment
@@ -867,7 +914,7 @@ if os.name == 'nt':
     if not "GEOS_LIBRARY_PATH" in locals() or not "GDAL_LIBRARY_PATH" in locals():
         if os.environ.get("GEOS_LIBRARY_PATH", None) \
             and os.environ.get("GDAL_LIBRARY_PATH", None):
-            GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH') 
+            GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH')
             GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH')
         else:
             #maybe it will be found regardless if not it will throw 500 error

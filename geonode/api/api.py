@@ -55,7 +55,7 @@ class CountJSONSerializer(Serializer):
         if options['type_filter']:
             resources = resources.instance_of(options['type_filter'])
 
-        counts = resources.values(options['count_type']).annotate(count=Count(options['count_type']))
+        counts = list(resources.values(options['count_type']).annotate(count=Count(options['count_type'])))
 
         return dict([(c[options['count_type']], c['count']) for c in counts])
 
@@ -63,8 +63,9 @@ class CountJSONSerializer(Serializer):
         options = options or {}
         data = self.to_simple(data, options)
         counts = self.get_resources_counts(options)
-        for item in data['objects']:
-            item['count'] = counts.get(item['id'], 0)
+        if 'objects' in data:
+            for item in data['objects']:
+                item['count'] = counts.get(item['id'], 0)
         # Add in the current time.
         data['requested_time'] = time.time()
 
@@ -78,10 +79,9 @@ class TypeFilteredResource(ModelResource):
 
     count = fields.IntegerField()
 
-    type_filter = None
-    title_filter = None
-
     def build_filters(self, filters={}):
+        self.type_filter = None
+        self.title_filter = None
 
         orm_filters = super(TypeFilteredResource, self).build_filters(filters)
 
@@ -94,15 +94,19 @@ class TypeFilteredResource(ModelResource):
 
         return orm_filters
 
+    def serialize(self, request, data, format, options={}):
+        options['title_filter'] = getattr(self, 'title_filter', None)
+        options['type_filter'] = getattr(self, 'type_filter', None)
+        options['user'] = request.user
+
+        return super(TypeFilteredResource, self).serialize(request, data, format, options)
+
 
 class TagResource(TypeFilteredResource):
     """Tags api"""
 
     def serialize(self, request, data, format, options={}):
-        options['title_filter'] = self.title_filter
-        options['type_filter'] = self.type_filter
         options['count_type'] = 'keywords'
-        options['user'] = request.user
 
         return super(TagResource, self).serialize(request, data, format, options)
 
@@ -120,10 +124,7 @@ class RegionResource(TypeFilteredResource):
     """Regions api"""
 
     def serialize(self, request, data, format, options={}):
-        options['title_filter'] = self.title_filter
-        options['type_filter'] = self.type_filter
         options['count_type'] = 'regions'
-        options['user'] = request.user
 
         return super(RegionResource, self).serialize(request, data, format, options)
 
@@ -133,19 +134,17 @@ class RegionResource(TypeFilteredResource):
         allowed_methods = ['get']
         filtering = {
             'name': ALL,
+            'code': ALL,
         }
-        # To activate the counts on regions uncomment the following line
-        # serializer = CountJSONSerializer()
+        if settings.API_INCLUDE_REGIONS_COUNT:
+            serializer = CountJSONSerializer()
 
 
 class TopicCategoryResource(TypeFilteredResource):
     """Category api"""
 
     def serialize(self, request, data, format, options={}):
-        options['title_filter'] = self.title_filter
-        options['type_filter'] = self.type_filter
         options['count_type'] = 'category'
-        options['user'] = request.user
 
         return super(TopicCategoryResource, self).serialize(request, data, format, options)
 
@@ -185,7 +184,7 @@ class GroupResource(ModelResource):
         ordering = ['title', 'last_modified']
 
 
-class ProfileResource(ModelResource):
+class ProfileResource(TypeFilteredResource):
     """Profile api"""
 
     avatar_100 = fields.CharField(null=True)
@@ -246,7 +245,7 @@ class ProfileResource(ModelResource):
         return bundle.obj.resourcebase_set.filter(id__in=obj_with_perms.values('id')).distinct().count()
 
     def dehydrate_avatar_100(self, bundle):
-        return avatar_url(bundle.obj, 100)
+        return avatar_url(bundle.obj, 240)
 
     def dehydrate_profile_detail_url(self, bundle):
         return bundle.obj.get_absolute_url()
@@ -273,6 +272,11 @@ class ProfileResource(ModelResource):
         else:
             return []
 
+    def serialize(self, request, data, format, options={}):
+        options['count_type'] = 'owner'
+
+        return super(ProfileResource, self).serialize(request, data, format, options)
+
     class Meta:
         queryset = get_user_model().objects.exclude(username='AnonymousUser')
         resource_name = 'profiles'
@@ -284,3 +288,26 @@ class ProfileResource(ModelResource):
         filtering = {
             'username': ALL,
         }
+        serializer = CountJSONSerializer()
+
+
+class OwnersResource(TypeFilteredResource):
+    """Owners api, lighter and faster version of the profiles api"""
+
+    def serialize(self, request, data, format, options={}):
+        options['count_type'] = 'owner'
+
+        return super(OwnersResource, self).serialize(request, data, format, options)
+
+    class Meta:
+        queryset = get_user_model().objects.exclude(username='AnonymousUser')
+        resource_name = 'owners'
+        allowed_methods = ['get']
+        ordering = ['username', 'date_joined']
+        excludes = ['is_staff', 'password', 'is_superuser',
+                    'is_active', 'last_login']
+
+        filtering = {
+            'username': ALL,
+        }
+        serializer = CountJSONSerializer()

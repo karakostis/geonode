@@ -8,16 +8,21 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # keeratipong petchadapong <jobcskku@hotmail.com>, 2014-2015
 msgid ""
 msgstr ""
 "Project-Id-Version: GeoNode\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2015-03-02 23:16-0600\n"
-"PO-Revision-Date: 2015-03-03 05:10+0000\n"
+"POT-Creation-Date: 2015-10-29 04:22-0500\n"
+"PO-Revision-Date: 2015-10-29 09:06+0000\n"
 "Last-Translator: Julien Collaer <julien.collaer@opengeode.be>\n"
-"Language-Team: Thai (http://www.transifex.com/projects/p/geonode/language/"
-"th/)\n"
+"Language-Team: Thai (http://www.transifex.com/geonode/geonode/language/th/)\n"
 "Language: th\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -64,14 +69,14 @@ msgstr "เฉพาะผู้ใช้หรือกลุ่มดังต
 msgid "Who can manage and edit this data?"
 msgstr "ใครสามารถจัดการและแก้ไขข้อมูลนี้ได้บ้าง?"
 
-#: static/geonode/js/search/search.js:324
+#: static/geonode/js/search/search.js:374
 #: static_root/geonode/js/search/search.js:298
 msgid "Enter your text here ..."
 msgstr "กรอกข้อความของคุณที่นี่ ..."
 
-#: static/geonode/js/search/search.js:350
+#: static/geonode/js/search/search.js:409
 msgid "Enter your region here ..."
-msgstr ""
+msgstr "กรอกภูมิภาคของคุณที่นี่..."
 
 #: static/geonode/js/upload/FileType.js:33
 #: static_root/geonode/js/upload/FileType.js:33
@@ -102,79 +107,83 @@ msgid "Google Earth KML"
 msgstr "Google Earth KML"
 
 #: static/geonode/js/upload/FileTypes.js:38
+msgid "GeoJSON"
+msgstr "GeoJSON"
+
+#: static/geonode/js/upload/FileTypes.js:44
 #: static_root/geonode/js/upload/FileTypes.js:38
 msgid "Zip Archives"
 msgstr "Zip Archives"
 
-#: static/geonode/js/upload/LayerInfo.js:231
+#: static/geonode/js/upload/LayerInfo.js:235
 #: static_root/geonode/js/upload/LayerInfo.js:231
 msgid "Layer Info"
 msgstr "ข้อมูลเกี่ยวกับชั้นข้อมูล"
 
-#: static/geonode/js/upload/LayerInfo.js:232
+#: static/geonode/js/upload/LayerInfo.js:236
 #: static_root/geonode/js/upload/LayerInfo.js:232
 msgid "Edit Metadata"
 msgstr "แก้ไข Metadata"
 
-#: static/geonode/js/upload/LayerInfo.js:233
+#: static/geonode/js/upload/LayerInfo.js:237
 #: static_root/geonode/js/upload/LayerInfo.js:233
 msgid "Manage Styles"
 msgstr "จัดการสไตล์"
 
-#: static/geonode/js/upload/LayerInfo.js:236
+#: static/geonode/js/upload/LayerInfo.js:240
 msgid "The column %1 was renamed to %2 <br/>"
-msgstr ""
+msgstr "คอลัมน์ %1 ถูกเปลี่ยนชื่อเป็น %2 <br/>"
 
-#: static/geonode/js/upload/LayerInfo.js:242
+#: static/geonode/js/upload/LayerInfo.js:246
 #: static_root/geonode/js/upload/LayerInfo.js:235
 msgid "Your layer was successfully uploaded"
 msgstr "ชั้นข้อมูลของคุณอัพโหลดเสร็จแล้ว"
 
-#: static/geonode/js/upload/LayerInfo.js:271
+#: static/geonode/js/upload/LayerInfo.js:275
 #: static_root/geonode/js/upload/LayerInfo.js:264
 msgid "Performing Final GeoServer Config Step"
 msgstr "กำลังทำขั้นตอนสุดท้ายของการตั้งค่า GeoServer"
 
-#: static/geonode/js/upload/LayerInfo.js:286
-#: static/geonode/js/upload/LayerInfo.js:312
+#: static/geonode/js/upload/LayerInfo.js:290
+#: static/geonode/js/upload/LayerInfo.js:316
 #: static_root/geonode/js/upload/LayerInfo.js:279
 #: static_root/geonode/js/upload/LayerInfo.js:305
 msgid "You need to specify more information in order to complete your upload"
 msgstr "คุณจำเป็นต้องเพิ่มรายละเอียดมากกว่านี้เพื่ออัพโหลดไฟล์"
 
-#: static/geonode/js/upload/LayerInfo.js:304
+#: static/geonode/js/upload/LayerInfo.js:308
 #: static_root/geonode/js/upload/LayerInfo.js:297
 msgid "You need to specify more information in order to complete your upload."
 msgstr "คุณจำเป็นต้องเพิ่มรายละเอียดมากกว่านี้เพื่ออัพโหลดไฟล์"
 
-#: static/geonode/js/upload/LayerInfo.js:304
+#: static/geonode/js/upload/LayerInfo.js:308
 #: static_root/geonode/js/upload/LayerInfo.js:297
 msgid "You can continue configuring your layer."
 msgstr "คุณสามารถทำการตั้งค่าชั้นข้อมูลของคุณต่อไปได้"
 
-#: static/geonode/js/upload/LayerInfo.js:322
-#: static/geonode/js/upload/LayerInfo.js:407
+#: static/geonode/js/upload/LayerInfo.js:326
+#: static/geonode/js/upload/LayerInfo.js:412
 #: static_root/geonode/js/upload/LayerInfo.js:315
 #: static_root/geonode/js/upload/LayerInfo.js:400
 msgid "Unexpected Error"
 msgstr "ข้อผิดพลาดที่คาดไม่ถึง"
 
-#: static/geonode/js/upload/LayerInfo.js:338
+#: static/geonode/js/upload/LayerInfo.js:342
 #: static_root/geonode/js/upload/LayerInfo.js:331
 msgid "Performing GeoServer Config Step"
 msgstr "กำลังทำขั้นตอนการตั้งค่าของ GeoServer"
 
-#: static/geonode/js/upload/LayerInfo.js:414
+#: static/geonode/js/upload/LayerInfo.js:419
 #: static_root/geonode/js/upload/LayerInfo.js:407
 msgid "Layer files uploaded, configuring in GeoServer"
 msgstr "ไฟล์ชั้นข้อมูลอัพโหลดเสร็จแล้ว กำลังตั้งค่าใน GeoServer"
 
-#: static/geonode/js/upload/LayerInfo.js:429
+#: static/geonode/js/upload/LayerInfo.js:434
 #: static_root/geonode/js/upload/LayerInfo.js:422
 msgid "Select or create a Geogig repository."
 msgstr "เลือกหรือสร้าง Geogig repository"
 
-#: static/geonode/js/upload/LayerInfo.js:524
+#: static/geonode/js/upload/LayerInfo.js:528
 #: static_root/admin/js/SelectFilter2.js:69
 #: static_root/geonode/js/upload/LayerInfo.js:517
 msgid "Remove"
@@ -186,10 +195,13 @@ msgstr "ลบ"
 msgid "The file %s is an unsupported file type, please select another file."
 msgstr "ไฟล์ %s เป็นชนิดไฟล์ที่ไม่รองรับ โปรดเลือกไฟล์อื่น"
 
-#: static/geonode/js/upload/upload.js:260
-#: static_root/geonode/js/upload/upload.js:260
-msgid "You are uploading an incomplete set of files."
-msgstr "คุณกำลังอัพโหลดชุดไฟล์ที่ไม่สมบูรณ์"
+#: static/geonode/js/upload/upload.js:280
+msgid ""
+"You are trying to upload an incomplete set of files or not all mandatory "
+"options have been validated.\n"
+"\n"
+"Please check for errors in the form!"
+msgstr ""
 
 #: static_root/admin/js/SelectFilter2.js:45
 #, c-format
@@ -238,6 +250,8 @@ msgid ""
 "This is the list of chosen %s. You may remove some by selecting them in the "
 "box below and then clicking the \"Remove\" arrow between the two boxes."
 msgstr ""
+"นี่คือรายการของ %s ที่ถูกเลือก คุณสามารถลบรายการโดยเลือกจากช่องด้านล่างแล้วคลิกลูกศร \"ลบ\" "
+"ที่อยู่ระหว่างทั้งสองช่อง  "
 
 #: static_root/admin/js/SelectFilter2.js:80
 msgid "Remove all"
@@ -251,13 +265,15 @@ msgstr "คลิกเพื่อลบ%sทั้งหมดที่เล�
 #: static_root/admin/js/actions.js:18 static_root/admin/js/actions.min.js:1
 msgid "%(sel)s of %(cnt)s selected"
 msgid_plural "%(sel)s of %(cnt)s selected"
-msgstr[0] ""
+msgstr[0] "เลือก %(sel) จาก %(cnt) "
 
 #: static_root/admin/js/actions.js:109 static_root/admin/js/actions.min.js:5
 msgid ""
 "You have unsaved changes on individual editable fields. If you run an "
 "action, your unsaved changes will be lost."
 msgstr ""
+"คุณยังไม่ได้บันทึกการเปลี่ยนแปลงในแต่ละฟิลด์ ถ้าคุณดำเนินการต่อไป "
+"การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะสูญหาย"
 
 #: static_root/admin/js/actions.js:121 static_root/admin/js/actions.min.js:5
 msgid ""
@@ -265,6 +281,8 @@ msgid ""
 "individual fields yet. Please click OK to save. You'll need to re-run the "
 "action."
 msgstr ""
+"คุณเลือกการกระทำแต่คุณยังไม่ได้บันทึกการเปลี่ยนแปลงไปยังฟิลด์ โปรดคลิกปุ่ม OK เพื่อบันทึก "
+"คุณต้องทำอีกครั้ง"
 
 #: static_root/admin/js/actions.js:123 static_root/admin/js/actions.min.js:6
 msgid ""
@@ -272,6 +290,7 @@ msgid ""
 "fields. You're probably looking for the Go button rather than the Save "
 "button."
 msgstr ""
+"คุณเลือกการกระทำและคุณยังไม่ได้เปลี่ยนแปลงฟิลด์คุณอาจจะกำลังมองหาปุ่ม \"ไป\" มากกว่าปุ่มบันทึก"
 
 #: static_root/admin/js/calendar.js:8
 msgid ""
@@ -341,6 +360,10 @@ msgstr "เมื่อวาน"
 #: static_root/admin/js/admin/DateTimeShortcuts.js:203
 msgid "Tomorrow"
 msgstr "พรุ่งนี้"
+
+#: static_root/geonode/js/upload/upload.js:260
+msgid "You are uploading an incomplete set of files."
+msgstr "คุณกำลังอัพโหลดชุดไฟล์ที่ไม่สมบูรณ์"
 
 #: templates/lang.js:10
 msgid "Save as Copy"

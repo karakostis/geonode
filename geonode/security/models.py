@@ -23,6 +23,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import login
 from django.contrib.auth.models import Group, Permission
+from django.conf import settings
 from guardian.utils import get_user_obj_perms_model
 from guardian.shortcuts import assign_perm, get_groups_with_perms
 
@@ -107,25 +108,16 @@ class PermissionLevelMixin(object):
                     attach_perms=True)}
 
             for user in info_layer['users']:
-                permissions = []
                 if user in info['users']:
-                    permissions = info['users'][user]
+                    info['users'][user] = info['users'][user] + info_layer['users'][user]
                 else:
-                    info['users'][user] = []
-
-                for perm in info_layer['users'][user]:
-                    if perm not in permissions:
-                        permissions.append(perm)
+                    info['users'][user] = info_layer['users'][user]
 
             for group in info_layer['groups']:
-                permissions = []
                 if group in info['groups']:
-                    permissions = info['groups'][group]
+                    info['groups'][group] = info['groups'][group] + info_layer['groups'][group]
                 else:
-                    info['groups'][group] = []
-                for perm in info_layer['groups'][group]:
-                    if perm not in permissions:
-                        permissions.append(perm)
+                    info['groups'][group] = info_layer['groups'][group]
 
         return info
 
@@ -143,7 +135,14 @@ class PermissionLevelMixin(object):
 
         # default permissions for anonymous users
         anonymous_group, created = Group.objects.get_or_create(name='anonymous')
-        assign_perm('view_resourcebase', anonymous_group, self.get_self_resource())
+
+        if not anonymous_group:
+            raise Exception("Could not acquire 'anonymous' Group.")
+
+        if settings.DEFAULT_ANONYMOUS_VIEW_PERMISSION:
+            assign_perm('view_resourcebase', anonymous_group, self.get_self_resource())
+        if settings.DEFAULT_ANONYMOUS_DOWNLOAD_PERMISSION:
+            assign_perm('download_resourcebase', anonymous_group, self.get_self_resource())
 
         # default permissions for resource owner
         set_owner_permissions(self)

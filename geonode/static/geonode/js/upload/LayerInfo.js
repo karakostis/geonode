@@ -44,7 +44,7 @@ define(function (require, exports) {
      *  @returns string 
      */
     LayerInfo.safeSelector = function (name) {
-        return name.replace(/\[|\]|\(|\)/g, '_');
+        return name.replace(/\[|\]|\(|\)|./g, '_');
     };
 
     /** Function to return the success template  
@@ -136,6 +136,9 @@ define(function (require, exports) {
     LayerInfo.prototype.prepareFormData = function (form_data) {
         var i, ext, file, perm, geogig, geogig_store, time;
 
+        var base_ext  = this.main.name.split('.').pop();
+        var base_name = this.main.name.slice(0, -(base_ext.length+1));
+
         if (!form_data) {
             form_data = new FormData();
         }
@@ -148,9 +151,9 @@ define(function (require, exports) {
         }
 
         if (geogig_enabled) {
-            geogig = $('#' + this.main.name.slice(0, -4) + '\\:geogig_toggle').is(':checked');
+            geogig = $('#' + base_name + '\\:geogig_toggle').is(':checked');
             if (geogig) {
-                geogig_store = $('#' + this.main.name.slice(0, -4) + '\\:geogig_store').val();
+                geogig_store = $('#' + base_name + '\\:geogig_store').val();
                 form_data.append('geogig_store', geogig_store);
             } else {
                 form_data.append('geogig_store', "");
@@ -158,7 +161,7 @@ define(function (require, exports) {
             form_data.append('geogig', geogig);
         }
         if (time_enabled) {
-            time = $('#' + this.main.name.slice(0, -4) + '-time').is(':checked');
+            time = $('#' + base_name + '-time').is(':checked');
             form_data.append('time', time);
         } 
 
@@ -174,6 +177,9 @@ define(function (require, exports) {
         }
 
         form_data.append('charset', $('#charset').val());
+        if ($('#id_metadata_uploaded_preserve').prop('checked')) {
+             form_data.append('metadata_uploaded_preserve', true);
+        }
         return form_data;
     };
 
@@ -377,6 +383,7 @@ define(function (require, exports) {
         var form_data = this.prepareFormData(),
             self = this;
         var prog = "";
+
         $.ajaxQueue({
             url: form_target,
             async: true,
@@ -439,8 +446,6 @@ define(function (require, exports) {
              }
            }
           });
-
-
     }
 
     /** Function to display the layers collected from the files
@@ -450,6 +455,7 @@ define(function (require, exports) {
      *  @returns {string}
      */
     LayerInfo.prototype.display = function (file_queue) {
+
         var layerTemplate = _.template($('#layerTemplate').html()),
             li = layerTemplate({
                 name: this.name,
@@ -468,7 +474,7 @@ define(function (require, exports) {
         $('#' + this.name + '\\:geogig_toggle').on('change', this.doGeoGigToggle);
 
         // Add values to the geogig store dropdown and hide.
-        this.setupGeogigDropdown($('#' + this.main.name.slice(0, -4) + '\\:geogig_store'));
+        this.setupGeogigDropdown($('#' + this.main.name.split('.')[0] + '\\:geogig_store'));
         $("#s2id_" + this.name + "\\:geogig_store").hide()
 
         return li;
@@ -519,10 +525,15 @@ define(function (require, exports) {
         ul.empty();
 
         $.each(this.files, function (idx, file) {
+            var file_ext = file.name.substr(file.name.lastIndexOf('.') + 1);
+
             var li = $('<li/>').appendTo(ul),
                 p = $('<p/>', {text: file.name}).appendTo(li),
                 a  = $('<a/>', {text: ' ' + gettext('Remove')});
 
+            if (file_ext === 'xml') {
+                $('#metadata_uploaded_preserve_check').show();
+            }
             a.data('layer', self.name);
             a.data('file',  file.name);
             a.appendTo(p);
@@ -532,6 +543,9 @@ define(function (require, exports) {
                     layer_name = target.data('layer'),
                     file_name  = target.data('file');
                 self.removeFile(file_name);
+                if (file_ext === 'xml') {
+                    $('#metadata_uploaded_preserve_check').hide();
+                }
                 self.displayRefresh();
             });
         });
