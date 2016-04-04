@@ -38,7 +38,7 @@ define(['underscore',
 
     templates.infoTemplate = _.template($('#infoTemplate').html());
 
-    /** Function to log errors to the #global-errors div 
+    /** Function to log errors to the #global-errors div
      *
      *  @params {options}
      *  @returns {string}
@@ -75,7 +75,7 @@ define(['underscore',
 
     /** Function to ...
      *
-     *  @params  
+     *  @params
      *  @returns
      */
     buildFileInfo = function (files) {
@@ -107,17 +107,17 @@ define(['underscore',
 
     /** Function to ...
      *
-     *  @params  
+     *  @params
      *  @returns
      */
     displayFiles = function (file_queue) {
         file_queue.empty();
-        
+
         var permission_edit = $("#permission-edit")
 
         permission_edit.show();
         var hasFullPermissionsWidget = false;
-        
+
         $.each(layers, function (name, info) {
             if (!info.type) {
                 log_error({
@@ -132,13 +132,13 @@ define(['underscore',
                 };
             }
         });
-        
+
         if(!hasFullPermissionsWidget){permission_edit.hide()};
     };
 
     /** Function to ...
      *
-     *  @params  
+     *  @params
      *  @returns
      */
     checkFiles = function(){
@@ -234,7 +234,7 @@ define(['underscore',
                         }
                     });
                 } else if ('url' in data) {
-                    window.location = data.url; 
+                    window.location = data.url;
                 } else {
                     common.logError("unexpected response");
                 }
@@ -243,7 +243,7 @@ define(['underscore',
                 common.logError(resp);
            }
         });
-        return false; 
+        return false;
     };
 
 
@@ -256,8 +256,8 @@ define(['underscore',
             common.logError('Please provide some files');
             return false;
         }
-        
-        //Start:Category Check
+
+        /*Start:Category Check
         var cs=document.getElementsByClassName("category");
         var category_selected=false;
         for(var idx=0;idx<cs.length;idx++){
@@ -274,7 +274,8 @@ define(['underscore',
             return false;
         }
         //END:Category Check
-
+        */
+        
         var checked = checkFiles();
         if ($.isEmptyObject(layers) || !checked) {
             alert(gettext('You are trying to upload an incomplete set of files or not all mandatory options have been validated.\n\nPlease check for errors in the form!'));
@@ -299,13 +300,13 @@ define(['underscore',
             geogig_stores = JSON.parse(resp);
         }).fail(function (resp) {
             //
-        });        
+        });
     };
 
 
-    /** Initialization function. Called from main.js 
+    /** Initialization function. Called from main.js
      *
-     *  @params  
+     *  @params
      *  @returns
      */
     initialize = function (options) {
