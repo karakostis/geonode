@@ -38,19 +38,19 @@ define(function (require, exports) {
         this.polling = false;
     };
 
-    /** Function to safely select a filename 
+    /** Function to safely select a filename
      *
-     *  @params name 
-     *  @returns string 
+     *  @params name
+     *  @returns string
      */
     LayerInfo.safeSelector = function (name) {
         return name.replace(/\[|\]|\(|\)/g, '_');
     };
 
-    /** Function to return the success template  
+    /** Function to return the success template
      *
      *  @params {options}
-     *  @returns 
+     *  @returns
      */
     LayerInfo.prototype.successTemplate = function (options) {
         var template = _.template($('#successTemplate').html());
@@ -73,7 +73,7 @@ define(function (require, exports) {
         return res;
     };
 
-    /** Function to check the type of a Layer 
+    /** Function to check the type of a Layer
      *
      *  @params {options}
      *  @returns {string}
@@ -108,7 +108,7 @@ define(function (require, exports) {
     };
 
     /** Function to get all the file extensions in
-     *  the current list of files being handled. 
+     *  the current list of files being handled.
      *
      *  @params {options}
      *  @returns {string}
@@ -130,7 +130,7 @@ define(function (require, exports) {
 
     /** Build a new FormData object from the current state of the
      *  LayerInfo object.
-     * 
+     *
      *  @returns {FromData}
      */
     LayerInfo.prototype.prepareFormData = function (form_data) {
@@ -163,7 +163,7 @@ define(function (require, exports) {
         if (time_enabled) {
             time = $('#' + base_name + '-time').is(':checked');
             form_data.append('time', time);
-        } 
+        }
 
         form_data.append('base_file', this.main);
         form_data.append('permissions', JSON.stringify(perm));
@@ -177,7 +177,7 @@ define(function (require, exports) {
         }
 
         form_data.append('charset', $('#charset').val());
-        form_data.append('category', $("#category_form :radio:checked").val());
+        //form_data.append('category', $("#category_form :radio:checked").val());
         return form_data;
     };
 
@@ -215,7 +215,7 @@ define(function (require, exports) {
             empty: 'true'
         });
     };
-   
+
     LayerInfo.prototype.doResume = function (event) {
         common.make_request({
             url: event.data.url,
@@ -224,7 +224,7 @@ define(function (require, exports) {
                 self.markError(resp.errors, status);
             },
             success: function (resp, status) {
-                window.location = resp.redirect_to; 
+                window.location = resp.redirect_to;
             },
         });
         return false;
@@ -259,7 +259,7 @@ define(function (require, exports) {
         }
     };
 
-    /** Function to deal with the final step in the upload process 
+    /** Function to deal with the final step in the upload process
      *
      *  @params {options}
      *  @returns {string}
@@ -281,7 +281,7 @@ define(function (require, exports) {
                 },
                 failure: function (resp, status) {
                     self.polling = false;
-                    self.markError(resp.errors, status); 
+                    self.markError(resp.errors, status);
                 },
                 success: function (resp, status) {
                     self.polling = false;
@@ -447,7 +447,7 @@ define(function (require, exports) {
     }
 
     /** Function to display the layers collected from the files
-     * selected for uploading 
+     * selected for uploading
      *
      *  @params {file_queue}
      *  @returns {string}
@@ -478,10 +478,10 @@ define(function (require, exports) {
         return li;
     };
 
-    /** Event handler to deal with user clicking on remove link 
+    /** Event handler to deal with user clicking on remove link
      *
      *  @params event
-     *  @returns none 
+     *  @returns none
      */
     LayerInfo.prototype.removeFileHandler = function (event) {
         var target = $(event.target),
@@ -511,7 +511,7 @@ define(function (require, exports) {
         }
     };
 
-    /** Function to display the files selected for uploading 
+    /** Function to display the files selected for uploading
      *
      *  @params
      *  @returns
@@ -541,10 +541,10 @@ define(function (require, exports) {
         });
     };
 
-    /** Function to display errors 
+    /** Function to display errors
      *
-     *  @params 
-     *  @returns 
+     *  @params
+     *  @returns
      */
     LayerInfo.prototype.displayErrors = function () {
         var ul = $('#' + LayerInfo.safeSelector(this.name) + '-element .errors').first();
@@ -553,13 +553,13 @@ define(function (require, exports) {
         $.each(this.errors, function (idx, error) {
             var li = $('<li/>', {text: error, 'class': 'alert alert-error'});
             li.appendTo(ul);
-            li.animate({opacity:1}, 5000, 'linear', function() { 
-                li.animate({opacity:0}, 1000, 'linear', function() {li.remove(); }); 
+            li.animate({opacity:1}, 5000, 'linear', function() {
+                li.animate({opacity:0}, 1000, 'linear', function() {li.remove(); });
             });
         });
     };
 
-    /** Function to refresh display after adding or removing files 
+    /** Function to refresh display after adding or removing files
      *
      *  @params {options}
      *  @returns {string}

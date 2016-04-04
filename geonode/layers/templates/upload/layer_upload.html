@@ -73,7 +73,7 @@
       <p>{% trans "Select the charset or leave default" %}</p>
       <select id="charset">
         {% for charset in charsets %}
-        {% if charset.0 == 'UTF-8' %} 
+        {% if charset.0 == 'UTF-8' %}
         <option selected='selected' value={{ charset.0 }}>{{ charset.1 }}</option>
         {% else %}
         <option value={{ charset.0 }}>{{ charset.1 }}</option>
@@ -82,25 +82,6 @@
       </select>
     </section>
 
-    <section id="category">
-    <br>
-    <div class="col-md-12">
-      <fieldset id="category_form">
-        <label class="control-label required-field">{% trans "Category" %}</label><br>
-        {% autoescape off %}
-        {% for choice in category_form.category_choice_field.field.choices %}
-        <div class="radio col-md-6">
-          <input type="radio" class="category" name="category_choice_field" value="{{ choice.0 }}"
-            {% ifequal category_form.initial choice.0 %} checked="checked" {% endifequal %}> 
-            {{ choice.1 }}
-          </input>
-        </div>
-        {% endfor %}
-        {% endautoescape %}
-      </fieldset>
-    </div>
-    </section>
-    
     <section>
       <a href="#" id="clear-button" class="btn btn-default">{% trans "Clear" %}</a>
       <a href="#" id="upload-button" class="btn btn-danger">{% trans "Upload files" %}</a>
@@ -120,10 +101,9 @@
 
 
 {% block extra_script %}
-<script data-main="{% static 'geonode/js/upload/main' %}" 
+<script data-main="{% static 'geonode/js/upload/main' %}"
   src="{% static 'lib/js/require.js' %}">
 </script>
-<script type="text/javascript" src="{% static 'geonode/js/upload/cookie.js' %}"></script>
 <script type="text/javascript">
 {% autoescape off %}
 
