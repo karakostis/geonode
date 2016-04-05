@@ -23,6 +23,7 @@ import sys
 import logging
 import shutil
 import traceback
+import psycopg2
 from guardian.shortcuts import get_perms
 
 from django.contrib import messages
@@ -489,20 +490,52 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                     out['success'] = False
                     out['errors'] = _("You are attempting to replace a raster layer with a vector.")
                 else:
-                    # delete geoserver's store before upload
-                    cat = gs_catalog
-                    cascading_delete(cat, layer.typename)
-                    saved_layer = file_upload(
-                        base_file,
-                        name=layer.name,
-                        user=request.user,
-                        overwrite=True,
-                        charset=form.cleaned_data["charset"],
-                    )
-                    out['success'] = True
-                    out['url'] = reverse(
-                        'layer_detail', args=[
-                            saved_layer.service_typename])
+                    layers_names = layer.typename
+                    workspace, name = layers_names.split(':')
+                    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+                        'dbname': settings.DATABASES['uploaded']['NAME'],
+                        'user': settings.DATABASES['uploaded']['USER'],
+                        'host': settings.DATABASES['uploaded']['HOST'],
+                        'password': settings.DATABASES['uploaded']['PASSWORD']
+                    })
+
+                    conn = psycopg2.connect(constr)
+                    cur = conn.cursor()
+
+                    sqlstr = "SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='{table}');".format(** {
+                        'table': name
+                    })
+                    cur.execute(sqlstr)
+                    exists = cur.fetchone()[0]
+                    # if true use psycopg2 and ogr2ogr to replace the content of the table else use cascading_delete() and upload the table
+                    if(exists):
+                        sqlstr = 'DELETE FROM "{table}";'.format(** {
+                            'table': name
+                        })
+                        cur.execute(sqlstr)
+                        conn.commit()  # psycopg2 needs to commit to delete features
+                        sqlstr = "SELECT type FROM geometry_columns WHERE f_table_schema = 'public' AND f_table_name = '{table}' AND f_geometry_column = 'the_geom';".format(** {
+                            'table': name
+                        })
+                        cur.execute(sqlstr)
+                        geometry_type = cur.fetchone()[0]
+                        sqlstr = 'ogr2ogr -append -preserve_fid -f "PostgreSQL" -a_srs "EPSG:{srid}" PG:"host={host} user={user} dbname={dbname} password={password}" -nln "{table}" -nlt {geometry_type} "{shp}"'.format(** {
+                            'srid': '4326',
+                            'shp': base_file,
+                            'table': name,
+                            'geometry_type': geometry_type,
+                            'host': settings.DATABASES['uploaded']['HOST'],
+                            'dbname': settings.DATABASES['uploaded']['NAME'],
+                            'user': settings.DATABASES['uploaded']['USER'],
+                            'password': settings.DATABASES['uploaded']['PASSWORD']
+                        })
+                        os.system(sqlstr)
+                        out['success'] = True
+                        out['url'] = reverse(
+                            'layer_detail', args=[
+                                layer.service_typename])
+                    else:
+                        raise Exception('Table does not exist in PostgreSQL')
             except Exception as e:
                 out['success'] = False
                 out['errors'] = str(e)
