@@ -509,18 +509,27 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                     exists = cur.fetchone()[0]
                     # if true use psycopg2 and ogr2ogr to replace the content of the table else use cascading_delete() and upload the table
                     if(exists):
+
                         sqlstr = 'DELETE FROM "{table}";'.format(** {
                             'table': name
                         })
                         cur.execute(sqlstr)
                         conn.commit()  # psycopg2 needs to commit to delete features
+
                         sqlstr = "SELECT type FROM geometry_columns WHERE f_table_schema = 'public' AND f_table_name = '{table}' AND f_geometry_column = 'the_geom';".format(** {
                             'table': name
                         })
                         cur.execute(sqlstr)
                         geometry_type = cur.fetchone()[0]
-                        sqlstr = 'ogr2ogr -append -preserve_fid -f "PostgreSQL" -a_srs "EPSG:{srid}" PG:"host={host} user={user} dbname={dbname} password={password}" -nln "{table}" -nlt {geometry_type} "{shp}"'.format(** {
-                            'srid': '4326',
+
+                        sqlstr = "SELECT Find_SRID('public', '{table}', 'the_geom');".format(**{
+                            'table': name
+                        })
+                        cur.execute(sqlstr)
+                        srid = cur.fetchone()[0]
+
+                        sqlstr = 'ogr2ogr -append -preserve_fid -f "PostgreSQL" -t_srs "EPSG:{srid}" PG:"host={host} user={user} dbname={dbname} password={password}" -nln "{table}" -nlt {geometry_type} "{shp}"'.format(** {
+                            'srid': srid,
                             'shp': base_file,
                             'table': name,
                             'geometry_type': geometry_type,
