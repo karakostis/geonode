@@ -155,8 +155,6 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 # exceptions when unicode characters are present.
                 # This should be followed up in upstream Django.
                 tempdir, base_file = form.write_files()
-                print('tempdir:', tempdir)
-                print('base_file:', base_file)
 
                 #topic_id = request.POST['category']
                 #topic_category = TopicCategory.objects.get(
@@ -486,7 +484,7 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
         out = {}
 
         if form.is_valid():
-            print('dfdfdfdfsf')
+
             try:
                 tempdir, base_file = form.write_files()
 
@@ -509,9 +507,6 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
 
                     conn = psycopg2.connect(constr)
                     cur = conn.cursor()
-
-                    shape_file_name = base_file.split("/")
-                    name = shape_file_name[-1][:-4]
 
                     sqlstr = "SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='{table}');".format(** {
                         'table': name
@@ -542,8 +537,6 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                         geometry_type = cur.fetchone()[0]
 
                         match_geom = False
-                        print(geometry_shape, geometry_type)
-
                         for key, value in geometry_dict.iteritems():
                             if((key == geometry_shape) and (value == geometry_type)):
                                 match_geom = True
@@ -579,7 +572,6 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                                 'layer_detail', args=[
                                     layer.service_typename])
                         else:
-                            print('asdasdsadasd')
                             raise Exception('Table geometry does not match with shapefile geometry')
                     else:
                         raise Exception('Table does not exist in PostgreSQL')
