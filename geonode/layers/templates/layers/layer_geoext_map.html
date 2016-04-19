@@ -20,8 +20,8 @@
                 localGeoServerBaseUrl: "{{GEOSERVER_BASE_URL}}",
                 authorizedRoles: "{{ user.is_authenticated|yesno:"ROLE_ADMINISTRATOR,ROLE_ANONYMOUS" }}",
 
-                /* The URL to a REST map configuration service.  This service 
-                 * provides listing and, with an authenticated user, saving of 
+                /* The URL to a REST map configuration service.  This service
+                 * provides listing and, with an authenticated user, saving of
                  * maps on the server for sharing and editing.
                  */
                 rest: "/maps/",
@@ -30,10 +30,10 @@
                 {% else %}
                 printService: "",
                 {% endif %}
-                
+
                 portalConfig: {
                     renderTo: "preview_map",
-                    height: 400 
+                    height: 400
                 },
 
                 listeners: {
@@ -43,7 +43,7 @@
 
                         // FIXME(Ariel): Zoom to extent until #1795 is fixed.
                         //map.zoomToExtent(layer.maxExtent, false)
-                        
+
                         var bbox = layer.bbox;
                         if (bbox != undefined)
                         {
@@ -89,9 +89,9 @@
                 app.selectedLayer.getLayer().mergeNewParams({
                     "STYLES": elem.id,
                     "_dc": Math.random()
-                }); 
+                });
             });
-            
+
             Ext.get(Ext.DomQuery.select(".style-edit")).on("click", function(evt, elem) {
                 for (var key in app.tools) {
                     var tool = app.tools[key];
@@ -103,9 +103,9 @@
             Ext.Ajax.on('requestcomplete', function(req, cippa, opts){
                 if(opts.method == 'PUT'){
                     $('#legend_icon').attr('src', $('#legend_icon').attr('src')+'&'+Math.random());
-                }   
+                }
             }, this);
         });
-    
+
     {% endautoescape %}
     </script>

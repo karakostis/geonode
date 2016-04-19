@@ -24,7 +24,9 @@ import logging
 import shutil
 import traceback
 import psycopg2
+from osgeo import ogr
 from guardian.shortcuts import get_perms
+
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -153,6 +155,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 # exceptions when unicode characters are present.
                 # This should be followed up in upstream Django.
                 tempdir, base_file = form.write_files()
+
                 #topic_id = request.POST['category']
                 #topic_category = TopicCategory.objects.get(
                 #    id=topic_id
@@ -165,7 +168,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
                     charset=form.cleaned_data["charset"],
                     abstract=form.cleaned_data["abstract"],
                     title=form.cleaned_data["layer_title"]  #,
-                    #category=topic_category.identifier
+                    # category=topic_category.identifier
                 )
             except Exception as e:
                 exception_type, error, tb = sys.exc_info()
@@ -481,8 +484,10 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
         out = {}
 
         if form.is_valid():
+
             try:
                 tempdir, base_file = form.write_files()
+
                 if layer.is_vector() and is_raster(base_file):
                     out['success'] = False
                     out['errors'] = _("You are attempting to replace a vector layer with a raster.")
@@ -492,6 +497,7 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                 else:
                     layers_names = layer.typename
                     workspace, name = layers_names.split(':')
+
                     constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
                         'dbname': settings.DATABASES['uploaded']['NAME'],
                         'user': settings.DATABASES['uploaded']['USER'],
@@ -507,14 +513,22 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                     })
                     cur.execute(sqlstr)
                     exists = cur.fetchone()[0]
-                    # if true use psycopg2 and ogr2ogr to replace the content of the table else use cascading_delete() and upload the table
+
+                    # if true use psycopg2 and ogr2ogr to replace the content of the table
                     if(exists):
 
-                        sqlstr = 'DELETE FROM "{table}";'.format(** {
-                            'table': name
-                        })
-                        cur.execute(sqlstr)
-                        conn.commit()  # psycopg2 needs to commit to delete features
+                        geometry_dict = {  # geometry_shape:geometry_table
+                            'POLYGON': 'MULTIPOLYGON',
+                            'LINESTRING': 'MULTILINESTRING',
+                            'POINT': 'POINT'
+                        }
+
+                        # get geometry of shapefile
+                        shapefile = ogr.Open(base_file)
+                        layer_shape = shapefile.GetLayer(0)
+                        feature_shape = layer_shape.GetFeature(0)
+                        geometry_shape_ref = feature_shape.GetGeometryRef()
+                        geometry_shape = geometry_shape_ref.GetGeometryName()
 
                         sqlstr = "SELECT type FROM geometry_columns WHERE f_table_schema = 'public' AND f_table_name = '{table}' AND f_geometry_column = 'the_geom';".format(** {
                             'table': name
@@ -522,27 +536,43 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
                         cur.execute(sqlstr)
                         geometry_type = cur.fetchone()[0]
 
-                        sqlstr = "SELECT Find_SRID('public', '{table}', 'the_geom');".format(**{
-                            'table': name
-                        })
-                        cur.execute(sqlstr)
-                        srid = cur.fetchone()[0]
+                        match_geom = False
+                        for key, value in geometry_dict.iteritems():
+                            if((key == geometry_shape) and (value == geometry_type)):
+                                match_geom = True
+                                break
 
-                        sqlstr = 'ogr2ogr -append -preserve_fid -f "PostgreSQL" -t_srs "EPSG:{srid}" PG:"host={host} user={user} dbname={dbname} password={password}" -nln "{table}" -nlt {geometry_type} "{shp}"'.format(** {
-                            'srid': srid,
-                            'shp': base_file,
-                            'table': name,
-                            'geometry_type': geometry_type,
-                            'host': settings.DATABASES['uploaded']['HOST'],
-                            'dbname': settings.DATABASES['uploaded']['NAME'],
-                            'user': settings.DATABASES['uploaded']['USER'],
-                            'password': settings.DATABASES['uploaded']['PASSWORD']
-                        })
-                        os.system(sqlstr)
-                        out['success'] = True
-                        out['url'] = reverse(
-                            'layer_detail', args=[
-                                layer.service_typename])
+                        if match_geom:
+
+                            sqlstr = 'DELETE FROM "{table}";'.format(** {
+                                'table': name
+                            })
+                            cur.execute(sqlstr)
+                            conn.commit()  # psycopg2 needs to commit to delete features
+
+                            sqlstr = "SELECT Find_SRID('public', '{table}', 'the_geom');".format(**{
+                                'table': name
+                            })
+                            cur.execute(sqlstr)
+                            srid = cur.fetchone()[0]
+
+                            sqlstr = 'ogr2ogr -append -preserve_fid -f "PostgreSQL" -t_srs "EPSG:{srid}" PG:"host={host} user={user} dbname={dbname} password={password}" -nln "{table}" -nlt {geometry_type} "{shp}"'.format(** {
+                                'srid': srid,
+                                'shp': base_file,
+                                'table': name,
+                                'geometry_type': geometry_type,
+                                'host': settings.DATABASES['uploaded']['HOST'],
+                                'dbname': settings.DATABASES['uploaded']['NAME'],
+                                'user': settings.DATABASES['uploaded']['USER'],
+                                'password': settings.DATABASES['uploaded']['PASSWORD']
+                            })
+                            os.system(sqlstr)
+                            out['success'] = True
+                            out['url'] = reverse(
+                                'layer_detail', args=[
+                                    layer.service_typename])
+                        else:
+                            raise Exception('Table geometry does not match with shapefile geometry')
                     else:
                         raise Exception('Table does not exist in PostgreSQL')
             except Exception as e:
@@ -567,6 +597,7 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
             json.dumps(out),
             mimetype='application/json',
             status=status_code)
+
 
 
 @login_required
