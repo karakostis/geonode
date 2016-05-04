@@ -115,7 +115,7 @@ class RegionManager(models.Manager):
 
 
 class Region(MPTTModel):
-    # objects = RegionManager()
+    objects = RegionManager()
 
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=255)
@@ -124,12 +124,12 @@ class Region(MPTTModel):
     def __unicode__(self):
         return self.name
 
-    class Meta:
-        ordering = ("name",)
-        verbose_name_plural = 'Metadata Regions'
-
     class MPTTMeta:
         order_insertion_by = ['name']
+
+    class Meta:
+        ordering = ('name',)
+        verbose_name_plural = 'Metadata Regions'
 
 
 class RestrictionCodeType(models.Model):
