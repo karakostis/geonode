@@ -25,7 +25,9 @@ import shutil
 import traceback
 import psycopg2
 from osgeo import ogr
+from owslib.wfs import WebFeatureService
 from guardian.shortcuts import get_perms
+
 
 
 from django.contrib import messages
@@ -233,7 +235,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
     config["bbox"] = bbox if config["srs"] != 'EPSG:900913' \
         else llbbox_to_mercator([float(coord) for coord in bbox])
-    config["title"] = layer.title
+    config["title"] = 'layer.title'
     config["queryable"] = True
 
     if layer.storeType == "remoteStore":
@@ -297,6 +299,21 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
     if settings.SOCIAL_ORIGINS:
         context_dict["social_links"] = build_social_links(request, layer)
+
+    layers_names = layer.typename
+    workspace, name = layers_names.split(':')
+
+    location = "{location}{service}".format(** {
+        'location': settings.OGC_SERVER['default']['LOCATION'],
+        'service': 'wms',
+    })
+    try:
+        wfs = WebFeatureService(location, version='1.1.0')
+        schema = wfs.get_schema(name)
+        context_dict["schema"] = schema
+    except:
+        print "Possible error with OWSLib. Turning all available properties to string"
+
 
     return render_to_response(template, RequestContext(request, context_dict))
 
