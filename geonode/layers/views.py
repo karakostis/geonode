@@ -311,6 +311,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         wfs = WebFeatureService(location, version='1.1.0')
         schema = wfs.get_schema(name)
         context_dict["schema"] = schema
+        print "OWSLib worked as expected"
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
 

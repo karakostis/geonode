@@ -194,12 +194,11 @@
                                       <ul class="dropdown-menu dropdown-menu-attributes" id="attribute_list" style="height: auto; max-height: 200px; overflow-x: hidden;">
                                           {% if schema %}
                                               {% for key, values in schema.properties.items %}
-                                                    <li><a href="#" id= {{ key }} data-type= {{ values }}>{{ key | capfirst }}</a></li>
+                                                    <li><a href="#" id= {{ key }} data-type= {{ values }} data-schema= 'yes'>{{ key | capfirst }}</a></li>
                                               {% endfor %}
                                           {% else %}
                                               {% for attribute in resource.attributes %}
-
-                                                    <li><a href="#" id= {{ attribute }} data-type= 'string'> {{ attribute | capfirst }} </a></li>
+                                                    <li><a href="#" id= {{ attribute }} data-type= 'string' data-schema= 'no'> {{ attribute | capfirst }} </a></li>
                                               {% endfor %}
                                           {% endif %}
                                       </ul>
@@ -570,6 +569,7 @@
             single_value_input = ($("#single_value").val()).trim();
             logical_operator_dropdown = $("#and-or li.selected a").attr('id');
             attribute_data_type = $("#attribute_list li.selected a").attr('data-type'); // get the type of variable.
+            attribute_data_schema = $("#attribute_list li.selected a").attr('data-schema');
 
             if(attribute_list == null || operator_list == null || single_value_input == "" ||  logical_operator_dropdown == null) {
                 if($("#missing-values").length == 0) {
@@ -582,11 +582,11 @@
                     $( "p" ).remove( "#missing-values" );
                 }
                 // validation that user enters a string for a string attribute or a number for a number attribute
-                if (attribute_data_type == 'string' && !isNaN(single_value_input) ){
+                if (attribute_data_schema == 'yes' && attribute_data_type == 'string' && !isNaN(single_value_input) ){
                       $('#single_value').css('background-color' , '#f26161');
                       $('#single_value').val("");
                       $('#single_value').attr("placeholder", "You entered a number. Not a string.");
-                } else if (attribute_data_type !== 'string' && isNaN(single_value_input)){
+                } else if (attribute_data_schema == 'yes' && attribute_data_type !== 'string' && isNaN(single_value_input)){
                     $('#single_value').css('background-color' , '#f26161');
                     $('#single_value').val("");
                     $('#single_value').attr("placeholder", "You entered a string. Not a number.");
@@ -602,8 +602,8 @@
                         } else if (operator_list == " LIKE ") {
                             single_value_input = "'%25" + single_value_input + "%25'";
                         }
-                    } else{
                     }
+
                     input = attribute_list + operator_list + single_value_input;
                     input_id = attribute_list + single_value_input;
 
