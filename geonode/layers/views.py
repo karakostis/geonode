@@ -20,6 +20,7 @@
 
 import os
 import sys
+import csv
 import logging
 import shutil
 import traceback
@@ -128,11 +129,13 @@ def _resolve_layer(request, typename, permission='base.view_resourcebase',
 
 @login_required
 def layer_upload(request, template='upload/layer_upload.html'):
+
     if request.method == 'GET':
         ctx = {
             'charsets': CHARSETS,
             'is_layer': True,
         }
+
         #category_form = CategoryForm(prefix="category_choice_field", initial=None)
         #return render_to_response(template, {"category_form": category_form}, RequestContext(request, ctx))
         return render_to_response(template, RequestContext(request, ctx))
@@ -143,6 +146,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
         out = {'success': False}
         if form.is_valid():
             title = form.cleaned_data["layer_title"]
+
             # Replace dots in filename - GeoServer REST API upload bug
             # and avoid any other invalid characters.
             # Use the title if possible, otherwise default to the filename
@@ -152,6 +156,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 name_base, __ = os.path.splitext(
                     form.cleaned_data["base_file"].name)
             name = slugify(name_base.replace(".", "_"))
+
             try:
                 # Moved this inside the try/except block because it can raise
                 # exceptions when unicode characters are present.
@@ -217,6 +222,8 @@ def layer_upload(request, template='upload/layer_upload.html'):
             json.dumps(out),
             mimetype='application/json',
             status=status_code)
+
+
 
 
 def layer_detail(request, layername, template='layers/layer_detail.html'):
@@ -307,14 +314,43 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         'location': settings.OGC_SERVER['default']['LOCATION'],
         'service': 'wms',
     })
+
     try:
         wfs = WebFeatureService(location, version='1.1.0')
         schema = wfs.get_schema(name)
         context_dict["schema"] = schema
+
+        #####################
+        # functionality added for the autocomplete
+        response = wfs.getfeature(typename=name, outputFormat='application/json')
+        features_response = json.dumps(json.loads(response.read()))
+        decoded = json.loads(features_response)
+
+        decoded_features = decoded['features']
+        decoded_features_length = len(decoded_features)
+
+        # get all the properties and store them in a list
+
+        properties = {}
+        for key in decoded_features[0]['properties']:
+            properties[key] = []
+
+        # loop the dictionary based on the values on the list and add the propertie
+        # in the dictionary (if doesn't exist) together with the value
+
+        for i in range(len(decoded_features)):
+            # decoded_features = decoded['features'][i]['properties']
+            for key, value in decoded_features[i]['properties'].iteritems():
+
+                if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
+                    properties[key].append(value)
+
+        context_dict["feature_properties"] = properties
+        #####################
+
         print "OWSLib worked as expected"
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
-
 
     return render_to_response(template, RequestContext(request, context_dict))
 
@@ -665,3 +701,127 @@ def layer_thumbnail(request, layername):
                 status=500,
                 mimetype='text/plain'
             )
+
+
+
+@login_required
+def layer_create(request, template='layers/layer_create.html'):
+
+    ctx = {
+        'charsets': CHARSETS,
+    }
+
+
+    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+        'dbname': settings.DATABASES['uploaded']['NAME'],
+        'user': settings.DATABASES['uploaded']['USER'],
+        'host': settings.DATABASES['uploaded']['HOST'],
+        'password': settings.DATABASES['uploaded']['PASSWORD']
+    })
+
+    conn = psycopg2.connect(constr)
+    cur = conn.cursor()
+
+    sqlstr = "SELECT DISTINCT adm0_name FROM wld_bnd_adm0_gaul_2015 ORDER BY adm0_name;"
+    cur.execute(sqlstr)
+    countries = cur.fetchall()
+    countries = [c[0] for c in countries]
+    ctx['countries'] = countries
+
+    sqlstr = "SELECT DISTINCT adm0_name, adm1_name FROM wld_bnd_adm1_gaul_2015;"
+    cur.execute(sqlstr)
+    regions = cur.fetchall()
+
+    cntr_rgns = {}
+    for i in range(len(regions)):
+        if (regions[i][0] not in cntr_rgns):
+            cntr_rgns[regions[i][0]] = []
+
+    for i in range(len(regions)):
+        cntr_rgns[regions[i][0]].append(regions[i][1])
+
+    ctx['regions'] = json.dumps(cntr_rgns)
+
+    sqlstr = "SELECT DISTINCT adm0_name, adm2_name FROM wld_bnd_adm2_gaul_2015;"
+    cur.execute(sqlstr)
+    provinces = cur.fetchall()
+
+    cntr_prvncs = {}
+    for i in range(len(provinces)):
+        if (provinces[i][0] not in cntr_prvncs):
+            cntr_prvncs[provinces[i][0]] = []
+
+    for i in range(len(provinces)):
+        cntr_prvncs[provinces[i][0]].append(provinces[i][1])
+
+    ctx['provinces'] = json.dumps(cntr_prvncs)
+
+    return render_to_response(template, RequestContext(request, ctx))
+
+
+@login_required
+def download_xls(request):
+
+    if request.method == 'GET':
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="downloaded_xls.csv"'
+
+        corresponding_data = {
+            "country": {
+                "columns": "ogc_fid,status,disp_area,adm0_code,adm0_name,str0_year,exp0_year,shape_leng,shape_area",
+                "table_name": "wld_bnd_adm0_gaul_2015"
+            },
+            "region": {
+                "columns": "gid, adm1_code,adm1_name,str1_year,exp1_year,status,disp_area,adm0_code,adm0_name,shape_leng,shape_area",
+                "table_name": "wld_bnd_adm1_gaul_2015",
+                "column_1": "adm0_name",
+                "column_2": "adm1_name"
+            },
+            "province": {
+                "columns": "gid,adm2_code,adm2_name,str2_year,exp2_year,adm1_code,adm1_name,status,disp_area,adm0_code,adm0_name,shape_leng,shape_area",
+                "table_name": "wld_bnd_adm2_gaul_2015",
+                "column_1": "adm0_name",
+                "column_2": "adm2_name"
+            }
+        }
+
+        country = request.GET.get('country')
+        areas = request.GET.get('areas')
+        areas = areas.replace(",", "','")
+        btn = request.GET.get('btn')
+
+        constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+            'dbname': settings.DATABASES['uploaded']['NAME'],
+            'user': settings.DATABASES['uploaded']['USER'],
+            'host': settings.DATABASES['uploaded']['HOST'],
+            'password': settings.DATABASES['uploaded']['PASSWORD']
+        })
+
+        conn = psycopg2.connect(constr)
+        cur = conn.cursor()
+
+        if (btn == "country"):
+            sqlstr = "SELECT {columns} FROM {table}".format(** {
+                'columns': corresponding_data[btn]["columns"],
+                'table': corresponding_data[btn]["table_name"]
+            })
+        else:
+            sqlstr = "SELECT {columns} FROM {table} WHERE {column_1} = '{country}' AND {column_2} IN ('{areas}')".format(** {
+                'columns': corresponding_data[btn]["columns"],
+                'country': country,
+                'areas': areas,
+                'table': corresponding_data[btn]["table_name"],
+                'column_1': corresponding_data[btn]["column_1"],
+                'column_2': corresponding_data[btn]["column_2"]
+            })
+
+
+        cur.execute(sqlstr)
+        rows = cur.fetchall()
+
+        writer = csv.writer(response)
+        writer.writerow(tuple(corresponding_data[btn]["columns"].split(',')))
+        for row in rows:
+            writer.writerow(row)
+        return response

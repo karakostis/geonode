@@ -646,7 +646,5 @@ def final_step(upload_session, user):
 
     if upload_session.time_info:
         set_time_info(saved_layer, **upload_session.time_info)
-
     signals.upload_complete.send(sender=final_step, layer=saved_layer)
-
     return saved_layer

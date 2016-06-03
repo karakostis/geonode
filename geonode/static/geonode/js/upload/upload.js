@@ -275,7 +275,7 @@ define(['underscore',
         }
         //END:Category Check
         */
-        
+
         var checked = checkFiles();
         if ($.isEmptyObject(layers) || !checked) {
             alert(gettext('You are trying to upload an incomplete set of files or not all mandatory options have been validated.\n\nPlease check for errors in the form!'));
