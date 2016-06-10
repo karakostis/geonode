@@ -35,6 +35,7 @@ from osgeo import gdal
 from django.contrib.auth import get_user_model
 from django.template.defaultfilters import slugify
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import signals
 from django.core.files import File
 from django.conf import settings
 from django.db.models import Q
@@ -46,6 +47,8 @@ from geonode.layers.models import Layer, UploadSession
 from geonode.base.models import Link, SpatialRepresentationType, TopicCategory, Region
 from geonode.layers.models import shp_exts, csv_exts, vec_exts, cov_exts
 from geonode.layers.metadata import set_metadata
+
+
 from geonode.utils import http_client
 
 import tarfile

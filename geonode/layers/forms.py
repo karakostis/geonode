@@ -21,8 +21,10 @@
 import os
 import tempfile
 import zipfile
+import psycopg2
 import autocomplete_light
 
+from django.conf import settings
 from django import forms
 from django.utils import simplejson as json
 from geonode.layers.utils import unzip_file

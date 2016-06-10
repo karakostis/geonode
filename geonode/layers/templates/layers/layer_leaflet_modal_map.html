@@ -11,26 +11,22 @@
   .leaflet-container {  /* all maps */
     height: 250px;
   }
+
 </style>
+
 <script type="text/javascript">
-
     window.addEventListener("map:init", function (e) {
-
         var map = e.detail.map;
-        initialized = false
-
-        // functionality for area select
+        //initialized = false
         var areaSelect = L.areaSelect({width:200, height:300});
         areaSelect.addTo(map);
-        // Read the bouding box
         var bounds = areaSelect.getBounds();
-
-        // Set the dimensions of the box
         areaSelect.setDimensions({width: 100, height: 100})
 
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             var tab = $(e.target).attr("href");
-            if (tab == '#map' && !initialized){
+            //if (tab == '#map' && !initialized){
+            if (tab == '#map'){
                 map.invalidateSize();
                 {% if resource.bbox_string %}
                 zoom_to_box(map, [{{ resource.bbox_string }}]);
@@ -62,7 +58,7 @@
                     map.addLayer(tile_layer);
                     tile_layer.setZIndex(99);
                 }
-                initialized = true;
+                //initialized = true;
             }
             if (tab == '#map'){
                 areaSelect.on("change", function() { // append bounding box to url

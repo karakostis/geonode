@@ -8,7 +8,7 @@ import logging
 from decimal import Decimal
 from csvkit import sql
 from csvkit import table
-from csvkit import CSVKitWriter
+#from csvkit import CSVKitWriter
 from csvkit.cli import CSVKitUtility
 from django.db.models import signals
 from geoserver.catalog import Catalog
@@ -42,8 +42,8 @@ def process_csv_file(instance, delimiter=",", no_header_row=False):
     instance.table_name = table_name
     instance.save()
     f = open(csv_filename, 'rb')
-   
-    try: 
+
+    try:
         csv_table = table.Table.from_csv(f,name=table_name, no_header_row=no_header_row, delimiter=delimiter)
     except:
         instance.delete()
@@ -54,10 +54,10 @@ def process_csv_file(instance, delimiter=",", no_header_row=False):
 
     for column in csv_table:
         column.name = slugify(unicode(column.name)).replace('-','_')
-        attribute, created = Attribute.objects.get_or_create(resource=instance, 
-            attribute=column.name, 
-            attribute_label=column.name, 
-            attribute_type=column.type.__name__, 
+        attribute, created = Attribute.objects.get_or_create(resource=instance,
+            attribute=column.name,
+            attribute_label=column.name,
+            attribute_type=column.type.__name__,
             display_order=column.order)
 
     # Create Database Table
@@ -86,7 +86,7 @@ def process_csv_file(instance, delimiter=",", no_header_row=False):
         "'")
     try:
         cur = conn.cursor()
-        cur.execute('drop table if exists %s CASCADE;' % table_name) 
+        cur.execute('drop table if exists %s CASCADE;' % table_name)
         cur.execute(create_table_sql)
         conn.commit()
     except Exception as e:
@@ -106,7 +106,7 @@ def process_csv_file(instance, delimiter=",", no_header_row=False):
 
     conn = engine.connect()
     trans = conn.begin()
- 
+
     if csv_table.count_rows() > 0:
         insert = sql_table.insert()
         headers = csv_table.headers()
@@ -114,13 +114,13 @@ def process_csv_file(instance, delimiter=",", no_header_row=False):
             conn.execute(insert, [dict(zip(headers, row)) for row in csv_table.to_rows()])
         except:
             # Clean up after ourselves
-            instance.delete() 
+            instance.delete()
             return None, str(sys.exc_info()[0])
 
     trans.commit()
     conn.close()
     f.close()
-    
+
     return instance, ""
 
 def create_point_col_from_lat_lon(table_name, lat_column, lon_column):
@@ -151,7 +151,7 @@ def create_point_col_from_lat_lon(table_name, lat_column, lon_column):
         cur = conn.cursor()
         cur.execute(alter_table_sql)
         cur.execute(update_table_sql)
-        cur.execute(create_index_sql) 
+        cur.execute(create_index_sql)
         conn.commit()
         conn.close()
     except Exception as e:
@@ -159,7 +159,7 @@ def create_point_col_from_lat_lon(table_name, lat_column, lon_column):
         msg =  "Error Creating Point Column from Latitude and Longitude %s" % (str(e[0]))
         return None, msg
 
-    # Create the Layer in GeoServer from the table 
+    # Create the Layer in GeoServer from the table
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest",
                           _user, _password)
@@ -193,14 +193,14 @@ def create_point_col_from_lat_lon(table_name, lat_column, lon_column):
             "bbox_y0": Decimal(ft.latlon_bbox[2]),
             "bbox_y1": Decimal(ft.latlon_bbox[3])
         })
-        signals.pre_save.connect(geoserver_pre_save, sender=Layer) 
+        signals.pre_save.connect(geoserver_pre_save, sender=Layer)
         set_attributes(layer, overwrite=True)
     except Exception as e:
         msg = "Error creating GeoNode layer for %s: %s" % (table_name, str(e))
         return None, msg
 
     return layer, ""
-    
+
 
 def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute_name):
 
@@ -242,8 +242,8 @@ def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute
             db['HOST'] +
             "'")
         cur = conn.cursor()
-        cur.execute('drop view if exists %s;' % double_view_name) 
-        cur.execute('drop materialized view if exists %s;' % view_name) 
+        cur.execute('drop view if exists %s;' % double_view_name)
+        cur.execute('drop materialized view if exists %s;' % view_name)
         cur.execute(view_sql)
         cur.execute(double_view_sql)
         cur.execute(matched_count_sql)
@@ -294,7 +294,7 @@ def setup_join(table_name, layer_typename, table_attribute_name, layer_attribute
             "bbox_y0": Decimal(ft.latlon_bbox[2]),
             "bbox_y1": Decimal(ft.latlon_bbox[3])
         })
-        signals.pre_save.connect(geoserver_pre_save, sender=Layer) 
+        signals.pre_save.connect(geoserver_pre_save, sender=Layer)
         set_attributes(layer, overwrite=True)
         tj.join_layer = layer
         tj.save()
