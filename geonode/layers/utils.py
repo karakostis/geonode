@@ -28,6 +28,13 @@ import os
 import glob
 import sys
 import tempfile
+import uuid
+import psycopg2
+from csvkit import sql
+from csvkit import table
+from decimal import Decimal
+
+
 
 from osgeo import gdal
 
@@ -50,6 +57,11 @@ from geonode.layers.metadata import set_metadata
 
 
 from geonode.utils import http_client
+
+
+# Additional Modules
+from geoserver.catalog import Catalog
+
 
 import tarfile
 
@@ -677,3 +689,159 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
     if image is not None:
         filename = 'layer-%s-thumb.png' % instance.uuid
         instance.save_thumbnail(filename, image=image)
+
+def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id):
+    # CREATE table based on CSV
+    f = open(absolute_base_file, 'rb')
+    delimiter = ","
+    no_header_row = False
+
+    try:
+        csv_table = table.Table.from_csv(f, name=table_name_temp, no_header_row=no_header_row, delimiter=delimiter)
+    except:
+        return None, str(sys.exc_info()[0])
+
+    for column in csv_table:
+        column.name = slugify(unicode(column.name)).replace('-', '_')
+
+    try:
+        sql_table = sql.make_table(csv_table, table_name_temp)
+        create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
+    except:
+        return None, str(sys.exc_info()[0])
+
+    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+        'dbname': settings.DATABASES['uploaded']['NAME'],
+        'user': settings.DATABASES['uploaded']['USER'],
+        'host': settings.DATABASES['uploaded']['HOST'],
+        'password': settings.DATABASES['uploaded']['PASSWORD']
+    })
+    conn = psycopg2.connect(constr)
+
+    try:
+        # create table - if it exists then drop it
+        cur = conn.cursor()
+        cur.execute('DROP TABLE IF EXISTS %s CASCADE;' % table_name_temp)
+        cur.execute(create_table_sql)
+        conn.commit()
+    except Exception as e:
+        logger.error(
+            "Error Creating Temporary table %s:%s",
+            table_name_temp,
+            str(e))
+
+    # COPY DATA TO TABLE
+    connection_string = "postgresql://%s:%s@%s:%s/%s" % (settings.DATABASES['uploaded']['USER'], settings.DATABASES['uploaded']['PASSWORD'], settings.DATABASES['uploaded']['HOST'], settings.DATABASES['uploaded']['PORT'], settings.DATABASES['uploaded']['NAME'])
+    try:
+        engine, metadata = sql.get_connection(connection_string)
+    except ImportError:
+        return None, str(sys.exc_info()[0])
+
+    conn_eng = engine.connect()
+    trans = conn_eng.begin()
+
+    if csv_table.count_rows() > 0:
+        insert = sql_table.insert()
+        headers = csv_table.headers()
+        try:
+            conn_eng.execute(insert, [dict(zip(headers, row)) for row in csv_table.to_rows()])
+        except:
+            return None, str(sys.exc_info()[0])
+
+    trans.commit()
+    conn_eng.close()
+
+
+    # CREATE JOINED TABLE - DROP table_name_temp
+
+    new_clmns = []
+    for idx, item in enumerate(headers):
+        if (idx > 1): # 1 because the downloaded layer contains two columns from the global table, which we dont want to include them again
+            new_column = "{table_name}.{item}".format(** {
+                'table_name': table_name_temp,
+                'item': item
+            })
+            new_clmns.append(new_column)
+
+    added_columns = ', '.join(new_clmns)
+
+    try:
+        sqlstr = "CREATE TABLE {new_table_name} AS (SELECT {wrld_table}.*, {added_columns} FROM {wrld_table} INNER JOIN {temp_table} ON ({wrld_table}.{id} = {temp_table}.{id}));".format(** {
+            'new_table_name': new_table,
+            'wrld_table': wrld_table_name,
+            'temp_table': table_name_temp,
+            'id': wrld_table_id,
+            'added_columns': added_columns
+        })
+        print sqlstr
+        cur.execute(sqlstr)
+        conn.commit()
+    except:
+        logger.error(
+            "Failed to create joined table")
+
+    try:
+        sqlstr = "DROP TABLE IF EXISTS {temp_table} CASCADE;".format(** {
+            'temp_table': table_name_temp
+        })
+        cur.execute(sqlstr)
+        conn.commit()
+    except:
+        logger.error(
+            "Failed to drop temporary table")
+    conn.close()
+
+
+def create_geoserver_geonode_layer(new_table):
+    # Create the Layer in GeoServer from the table
+
+    ## to be added: check if layer name already exists
+    try:
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest")
+        workspace = cat.get_workspace(settings.DEFAULT_WORKSPACE)
+        ds = cat.get_store("uploaded") # name of store in WFP-Geonode
+
+        ds.connection_parameters.update(host=settings.DATABASES['uploaded']['HOST'], port=settings.DATABASES['uploaded']['PORT'], database=settings.DATABASES['uploaded']['NAME'], user=settings.DATABASES['uploaded']['USER'], passwd=settings.DATABASES['uploaded']['PASSWORD'], dbtype='postgis', schema='public')
+
+        ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
+
+    except Exception as e:
+        msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
+        return None, msg
+
+
+
+    # Create a new upload session
+    '''
+    try:
+        upload_session = UploadSession.objects.create(user='None')
+        print upload_session
+    except Exception as e:
+        msg = "Error creating UploadSession"
+        print msg
+        return None, msg
+    '''
+
+
+
+    # Create the Layer in GeoNode from the GeoServer Layer
+    try:
+        '''
+        layer, created = Layer.objects.get_or_create(name=new_table, defaults={
+            "workspace": workspace.name,
+            "store": ds.name,
+            "storeType": ds.resource_type,
+            "typename": "%s:%s" % (workspace.name.encode('utf-8'), ft.name.encode('utf-8')),
+            "title": ft.title or 'No title provided',
+            "abstract": ft.abstract or 'No abstract provided',
+            "uuid": str(uuid.uuid4()),
+            "bbox_x0": Decimal(ft.latlon_bbox[0]),
+            "bbox_x1": Decimal(ft.latlon_bbox[1]),
+            "bbox_y0": Decimal(ft.latlon_bbox[2]),
+            "bbox_y1": Decimal(ft.latlon_bbox[3])
+        })
+        '''
+        #set_attributes(layer, overwrite=True)
+    except Exception as e:
+        msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))
+        return None, msg
