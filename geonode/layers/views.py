@@ -320,6 +320,13 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     })
 
     try:
+        # get layer's attributes with display_order gt 0
+        attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+        layers_attributes = []
+        for values in attr_to_display.values('attribute'):
+            layers_attributes.append(values['attribute'])
+
+        # get schema for specific layer
         wfs = WebFeatureService(location, version='1.1.0')
         schema = wfs.get_schema(name)
 
@@ -328,11 +335,18 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         elif 'geom' in schema['properties']:
             schema['properties'].pop("geom", None)
 
-        layer_properties = []
+        # filter the schema dict based on the values of layers_attributes
+        layer_attributes_schema = []
         for key in schema['properties'].keys():
-            layer_properties.append(key)
+            if key in layers_attributes:
+                layer_attributes_schema.append(key)
+            else:
+                schema['properties'].pop(key, None)
+
+        filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
+
         context_dict["schema"] = schema
-        response = wfs.getfeature(typename=name, propertyname=layer_properties, outputFormat='application/json')
+        response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
 
         features_response = json.dumps(json.loads(response.read()))
         decoded = json.loads(features_response)
@@ -350,7 +364,9 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
                 if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
                     properties[key].append(value)
 
-
+        for key in properties:
+            properties[key].sort()
+            
         context_dict["feature_properties"] = properties
 
         print "OWSLib worked as expected"
