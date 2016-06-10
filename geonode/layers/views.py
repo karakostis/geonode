@@ -849,6 +849,8 @@ def _create_geoserver_geonode_layer(new_table):
 
         ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
 
+
+
     except Exception as e:
         msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
         return None, msg
@@ -869,6 +871,19 @@ def _create_geoserver_geonode_layer(new_table):
     # Create the Layer in GeoNode from the GeoServer Layer
     try:
 
+        # get the sld for this layer
+        #style = cat.get_style("polygon")
+        #print style.href
+
+
+        sld_polygon = '<?xml version="1.0" encoding="ISO-8859-1"?><StyledLayerDescriptor version="1.0.0" xsi:schemaLocation="http://www.opengis.net/sld StyledLayerDescriptor.xsd" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- a Named Layer is the basic building block of an SLD document --><NamedLayer><Name>default_polygon</Name><UserStyle><!-- Styles can have names, titles and abstracts --><Title>Default Polygon</Title><Abstract>A sample style that draws a polygon</Abstract><!-- FeatureTypeStyles describe how to render different features --><!-- A FeatureTypeStyle for rendering polygons --><FeatureTypeStyle><Rule><Name>rule1</Name><Title>test</Title><Abstract>A polygon with a gray fill and a 1 pixel black outline</Abstract><PolygonSymbolizer><Fill><CssParameter name="fill">#AAAAAA</CssParameter></Fill><Stroke><CssParameter name="stroke">#000000</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
+
+        cat.create_style("test_sldsd", sld_polygon)
+        #print sld_polygon
+
+        #test = cat.create_style("testing_sld", style)
+        #print test
+
         gsslurp_output = gs_slurp(filter=new_table)
         from geonode.base.models import ResourceBase
         print gsslurp_output
@@ -877,6 +892,9 @@ def _create_geoserver_geonode_layer(new_table):
 
         output_2 = geoserver_post_save(layer, ResourceBase)
         print output_2
+
+
+        # create the geonode layer manually
         '''
         layer, created = Layer.objects.get_or_create(name=new_table, defaults={
             "workspace": workspace.name,
