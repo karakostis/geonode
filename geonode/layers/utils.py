@@ -710,8 +710,6 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
                 status_code = '400'
                 return errormsgs_val, status_code
 
-
-
     if idx < 2:  # check if there are added columns in the CSV
         errormsgs_val = "The CSV has no added columns. Please add extra columns"
         status_code = '400'

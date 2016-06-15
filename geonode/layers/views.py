@@ -866,23 +866,12 @@ def _create_geoserver_geonode_layer(new_table):
 
         ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
 
-
+        print 'something'
     except Exception as e:
+        print 'somethng else'
         msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
         return None, msg
 
-
-
-    # Create a new upload session
-    '''
-    try:
-        upload_session = UploadSession.objects.create(user='None')
-        print upload_session
-    except Exception as e:
-        msg = "Error creating UploadSession"
-        print msg
-        return None, msg
-    '''
 
     # Create the Layer in GeoNode from the GeoServer Layer
     try:
