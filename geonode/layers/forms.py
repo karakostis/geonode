@@ -26,6 +26,7 @@ import autocomplete_light
 
 from django.conf import settings
 from django import forms
+from django.utils.translation import ugettext_lazy as _
 from django.utils import simplejson as json
 from geonode.layers.utils import unzip_file
 from geonode.layers.models import Layer, Attribute
@@ -250,10 +251,9 @@ class UploadCSVForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(UploadCSVForm, self).__init__(*args, **kwargs)
-        self.fields['selected_country'] = forms.MultipleChoiceField(help_text='Select Country',
-                choices=get_country_names(), required=True)
+        self.fields['selected_country'] = forms.MultipleChoiceField(choices=get_country_names(), required=True)
 
-    title = forms.CharField(max_length=255, help_text='Title', required=True)
+    title = forms.CharField(max_length=255, required=True)
 
     LAYER_TYPE = (
         ('1', 'Global Layer'),
@@ -261,7 +261,7 @@ class UploadCSVForm(forms.Form):
         ('3', 'Layer by Admin2'),
         ('3', 'Layer by Location'),
     )
-    layer_type = forms.ChoiceField(choices=LAYER_TYPE, help_text='Type of layer', required=True)
+    layer_type = forms.ChoiceField(choices=LAYER_TYPE, required=True)
 
     csv = forms.FileField(required=True)
 
@@ -283,3 +283,18 @@ class UploadCSVForm(forms.Form):
 
 
         return tempdir, absolute_base_file
+
+
+    def clean(self):
+        cleaned_data = super(UploadCSVForm, self).clean()
+        csv_file = self.cleaned_data.get('csv')
+        if not csv_file:
+            raise forms.ValidationError(_("CSV must be a file."))
+
+        else:
+            csv_file_type = str(csv_file).split('.')
+            if csv_file_type[1] not in ['csv','CSV']:
+                print csv_file_type[1]
+                raise forms.ValidationError(_("This is not a supported format. Please upload a CSV file."))
+
+        return cleaned_data

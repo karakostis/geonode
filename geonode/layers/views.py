@@ -58,7 +58,7 @@ from geonode.base.models import TopicCategory
 from geonode.utils import default_map_config
 from geonode.utils import GXPLayer
 from geonode.utils import GXPMap
-from geonode.layers.utils import file_upload, is_raster, is_vector, create_geoserver_geonode_layer, process_csv_file
+from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
 from geonode.layers.forms import UploadCSVForm
@@ -717,6 +717,7 @@ def layer_create(request, template='layers/layer_create.html'):
             'charsets': CHARSETS,
         }
 
+        # Get the values for the dropdown menus of regions and provinces
         constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
             'dbname': settings.DATABASES['uploaded']['NAME'],
             'user': settings.DATABASES['uploaded']['USER'],
@@ -733,42 +734,35 @@ def layer_create(request, template='layers/layer_create.html'):
         countries = [c[0] for c in countries]
         ctx['countries'] = countries
 
-        sqlstr = "SELECT DISTINCT adm0_name, adm1_name FROM wld_bnd_adm1_gaul_2015;"
-        cur.execute(sqlstr)
-        regions = cur.fetchall()
-
-        cntr_rgns = {}
-        for i in range(len(regions)):
-            if (regions[i][0] not in cntr_rgns):
-                cntr_rgns[regions[i][0]] = []
-
-        for i in range(len(regions)):
-            cntr_rgns[regions[i][0]].append(regions[i][1])
-
-        ctx['regions'] = json.dumps(cntr_rgns)
-
-        sqlstr = "SELECT DISTINCT adm0_name, adm2_name FROM wld_bnd_adm2_gaul_2015;"
-        cur.execute(sqlstr)
-        provinces = cur.fetchall()
-
-        cntr_prvncs = {}
-        for i in range(len(provinces)):
-            if (provinces[i][0] not in cntr_prvncs):
-                cntr_prvncs[provinces[i][0]] = []
-
-        for i in range(len(provinces)):
-            cntr_prvncs[provinces[i][0]].append(provinces[i][1])
-
-        ctx['provinces'] = json.dumps(cntr_prvncs)
-
         form = UploadCSVForm()
         ctx['form'] = form
         return render_to_response(template, RequestContext(request, ctx))
 
     elif request.method == 'POST':
 
+        # Get the values for the dropdown menus of regions and provinces
+        ctx = {}
+        constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+            'dbname': settings.DATABASES['uploaded']['NAME'],
+            'user': settings.DATABASES['uploaded']['USER'],
+            'host': settings.DATABASES['uploaded']['HOST'],
+            'password': settings.DATABASES['uploaded']['PASSWORD']
+        })
+
+        conn = psycopg2.connect(constr)
+        cur = conn.cursor()
+
+        sqlstr = "SELECT DISTINCT adm0_name FROM wld_bnd_adm0_gaul_2015 ORDER BY adm0_name;"
+        cur.execute(sqlstr)
+        countries = cur.fetchall()
+        countries = [c[0] for c in countries]
+        ctx['countries'] = countries
+
+
         form = UploadCSVForm(request.POST, request.FILES)
-        out = {}
+        errormsgs = []
+        ctx['success'] = False
+
         if form.is_valid():
 
             try:
@@ -777,15 +771,21 @@ def layer_create(request, template='layers/layer_create.html'):
                 layer_based_info = {
                     "1": {
                         "wrld_table": "wld_bnd_adm0_gaul_2015",
-                        "id": "adm0_code"
+                        "id": "adm0_code",
+                        "columns": "wld_bnd_adm0_gaul_2015.adm0_code, wld_bnd_adm0_gaul_2015.adm0_name, wld_bnd_adm0_gaul_2015.wkb_geometry",
+                        "geom": "wkb_geometry"
                         },
                     "2": {
                         "wrld_table": "wld_bnd_adm1_gaul_2015",
-                        "id": "adm1_code"
+                        "id": "adm1_code",
+                        "columns": "wld_bnd_adm1_gaul_2015.adm0_code, wld_bnd_adm1_gaul_2015.adm0_name, wld_bnd_adm1_gaul_2015.adm1_code, wld_bnd_adm1_gaul_2015.adm1_name, wld_bnd_adm1_gaul_2015.geom",
+                        "geom": "geom"
                         },
                     "3": {
                         "wrld_table": "wld_bnd_adm2_gaul_2015",
-                        "id": "adm2_code"
+                        "id": "adm2_code",
+                        "columns": "wld_bnd_adm2_gaul_2015.adm0_code, wld_bnd_adm2_gaul_2015.adm0_name, wld_bnd_adm2_gaul_2015.adm1_code, wld_bnd_adm2_gaul_2015.adm1_name, wld_bnd_adm2_gaul_2015.adm2_code, wld_bnd_adm2_gaul_2015.adm2_name, wld_bnd_adm2_gaul_2015.geom",
+                        "geom": "geom"
                         }
                 }
 
@@ -793,6 +793,8 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 wrld_table_name = layer_based_info[layer_type[0]]['wrld_table']
                 wrld_table_id = layer_based_info[layer_type[0]]['id']
+                wrld_table_geom = layer_based_info[layer_type[0]]['geom']
+                wrld_table_columns = layer_based_info[layer_type[0]]['columns']
                 selected_country = form.cleaned_data["selected_country"]
                 cntr_name = slugify(selected_country[0].replace(" ", "_"))
                 table_name_temp = "%s_%s_temp" % (cntr_name, title)
@@ -802,39 +804,54 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 # Write CSV in the server
                 tempdir, absolute_base_file = form.write_files()
-                process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id)
+
+                errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom)
+
+                if status_code == '400':
+                    errormsgs.append(errormsgs_val)
+                    ctx['errormsgs'] = errormsgs
+                    return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries, 'errormsgs': errormsgs}))
+
 
                 # CREATE LAYER IN GEOSERVER AND IN GEONODE
                 _create_geoserver_geonode_layer(new_table)
 
-                out['success'] = True
+                ctx['success'] = True
 
             except Exception as e:
-                out['success'] = False
-                out['errors'] = str(e)
+                ctx['success'] = False
+                ctx['errors'] = str(e)
+
             finally:
 
                 if tempdir is not None:
                     shutil.rmtree(tempdir)
 
+            if ctx['success']:
+                status_code = 200
+                #template = '/layers/geonode:' + new_table + '/metadata'
+                #print template
+                layer = 'geonode:' + new_table
+                #return HttpResponseRedirect(template)
+
+                return HttpResponseRedirect(
+                    reverse(
+                        'layer_metadata',
+                        args=(
+                            layer,
+                        )))
+
+                #return render_to_response(template, RequestContext(request, {'form': form}))
         else:
 
-            errormsgs = []
             for e in form.errors.values():
                 errormsgs.append([escape(v) for v in e])
 
-            out['errors'] = form.errors
-            out['errormsgs'] = errormsgs
-            out['success'] = False
+            ctx['errors'] = form.errors
+            ctx['errormsgs'] = errormsgs
+            ctx['success'] = False
+            return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries}))
 
-    if out['success']:
-        status_code = 200
-        print status_code
-    else:
-        status_code = 400
-        print status_code
-
-    return render_to_response(template, RequestContext(request, {'form': form}))
 
 def _create_geoserver_geonode_layer(new_table):
     # Create the Layer in GeoServer from the table
@@ -848,7 +865,6 @@ def _create_geoserver_geonode_layer(new_table):
         ds.connection_parameters.update(host=settings.DATABASES['uploaded']['HOST'], port=settings.DATABASES['uploaded']['PORT'], database=settings.DATABASES['uploaded']['NAME'], user=settings.DATABASES['uploaded']['USER'], passwd=settings.DATABASES['uploaded']['PASSWORD'], dbtype='postgis', schema='public')
 
         ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
-
 
 
     except Exception as e:
@@ -875,10 +891,19 @@ def _create_geoserver_geonode_layer(new_table):
         #style = cat.get_style("polygon")
         #print style.href
 
-
+        '''
         sld_polygon = '<?xml version="1.0" encoding="ISO-8859-1"?><StyledLayerDescriptor version="1.0.0" xsi:schemaLocation="http://www.opengis.net/sld StyledLayerDescriptor.xsd" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- a Named Layer is the basic building block of an SLD document --><NamedLayer><Name>default_polygon</Name><UserStyle><!-- Styles can have names, titles and abstracts --><Title>Default Polygon</Title><Abstract>A sample style that draws a polygon</Abstract><!-- FeatureTypeStyles describe how to render different features --><!-- A FeatureTypeStyle for rendering polygons --><FeatureTypeStyle><Rule><Name>rule1</Name><Title>test</Title><Abstract>A polygon with a gray fill and a 1 pixel black outline</Abstract><PolygonSymbolizer><Fill><CssParameter name="fill">#AAAAAA</CssParameter></Fill><Stroke><CssParameter name="stroke">#000000</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
+        '''
+        import requests
 
-        cat.create_style("test_sldsd", sld_polygon)
+        r = requests.get('http://staging.geonode.wfp.org/geoserver/styles/polygon.sld')
+        sld_polygon = r.text
+        cat.create_style(new_table, sld_polygon, overwrite=True)
+        style = cat.get_style(new_table)
+        layer = cat.get_layer(new_table)
+        layer.default_style = style
+        cat.save(layer)
+
         #print sld_polygon
 
         #test = cat.create_style("testing_sld", style)
@@ -886,12 +911,12 @@ def _create_geoserver_geonode_layer(new_table):
 
         gsslurp_output = gs_slurp(filter=new_table)
         from geonode.base.models import ResourceBase
-        print gsslurp_output
+        #print gsslurp_output
         layer = ResourceBase.objects.get(title=new_table)
-        print layer
+        #print layer
 
         output_2 = geoserver_post_save(layer, ResourceBase)
-        print output_2
+        #print output_2
 
 
         # create the geonode layer manually
@@ -921,21 +946,19 @@ def download_xls(request):
 
     if request.method == 'GET':
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="downloaded_xls.csv"'
 
         corresponding_data = {
             "country": {
-                "columns": "ogc_fid,adm0_code",
+                "columns": "adm0_code,adm0_name",
                 "table_name": "wld_bnd_adm0_gaul_2015"
             },
             "region": {
-                "columns": "gid, adm1_code",
+                "columns": "adm1_code,adm1_name",
                 "table_name": "wld_bnd_adm1_gaul_2015",
                 "column_1": "adm0_name"
             },
             "province": {
-                "columns": "gid,adm2_code",
+                "columns": "adm2_code,adm2_name",
                 "table_name": "wld_bnd_adm2_gaul_2015",
                 "column_1": "adm0_name"
             }
@@ -957,12 +980,12 @@ def download_xls(request):
         cur = conn.cursor()
 
         if (btn == "country"):
-            sqlstr = "SELECT {columns} FROM {table}".format(** {
+            sqlstr = "SELECT {columns} FROM {table} ORDER BY 2".format(** {
                 'columns': corresponding_data[btn]["columns"],
                 'table': corresponding_data[btn]["table_name"]
             })
         else:
-            sqlstr = "SELECT {columns} FROM {table} WHERE {column_1} = '{country}'".format(** {
+            sqlstr = "SELECT {columns} FROM {table} WHERE {column_1} = '{country}' ORDER BY 2".format(** {
                 'columns': corresponding_data[btn]["columns"],
                 'country': country,
                 #'areas': areas,
@@ -973,8 +996,17 @@ def download_xls(request):
         cur.execute(sqlstr)
         rows = cur.fetchall()
 
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = "attachment; filename={file}".format(** {
+            'file': corresponding_data[btn]["table_name"] + ".csv"
+        })
+
         writer = csv.writer(response)
         writer.writerow(tuple(corresponding_data[btn]["columns"].split(',')))
+
         for row in rows:
-            writer.writerow(row)
+            field_1 = row[0]
+            field_2 = row[1].encode(encoding='UTF-8')
+            fields = [field_1, field_2]
+            writer.writerows([fields])
         return response
