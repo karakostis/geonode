@@ -30,11 +30,6 @@ import sys
 import tempfile
 import uuid
 import psycopg2
-from csvkit import sql
-from csvkit import table
-from decimal import Decimal
-
-
 
 from osgeo import gdal
 
@@ -58,9 +53,6 @@ from geonode.layers.metadata import set_metadata
 
 from geonode.utils import http_client
 
-
-# Additional Modules
-from geoserver.catalog import Catalog
 
 
 import tarfile
@@ -689,6 +681,7 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
     if image is not None:
         filename = 'layer-%s-thumb.png' % instance.uuid
         instance.save_thumbnail(filename, image=image)
+
 
 def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom):
     # CREATE table based on CSV
