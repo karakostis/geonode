@@ -30,6 +30,9 @@ import sys
 import tempfile
 import uuid
 import psycopg2
+from csvkit import sql
+from csvkit import table
+from decimal import Decimal
 
 from osgeo import gdal
 
@@ -53,6 +56,8 @@ from geonode.layers.metadata import set_metadata
 
 from geonode.utils import http_client
 
+# Additional Modules
+from geoserver.catalog import Catalog
 
 
 import tarfile

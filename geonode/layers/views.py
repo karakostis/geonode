@@ -58,18 +58,17 @@ from geonode.base.models import TopicCategory
 from geonode.utils import default_map_config
 from geonode.utils import GXPLayer
 from geonode.utils import GXPMap
-<<<<<<< HEAD
 from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file
-=======
 from geonode.layers.utils import file_upload, is_raster, is_vector
->>>>>>> 6aecc41b97fe7462ee4044a189fc37bd39f4d42d
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
+from geonode.layers.forms import UploadCSVForm
 
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
 from geonode.utils import build_social_links
-from geonode.geoserver.helpers import cascading_delete, gs_catalog
+from geonode.geoserver.helpers import cascading_delete, gs_catalog, gs_slurp
+from geonode.geoserver.signals import geoserver_post_save
 
 
 
