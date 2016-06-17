@@ -26,6 +26,7 @@ import shutil
 import traceback
 import psycopg2
 from osgeo import ogr
+from unidecode import unidecode
 from owslib.wfs import WebFeatureService
 from guardian.shortcuts import get_perms
 from geoserver.catalog import Catalog
@@ -824,9 +825,9 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 # Write CSV in the server
                 tempdir, absolute_base_file = form.write_files()
-
+                print tempdir
                 errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom)
-
+                print status_code
                 if status_code == '400':
                     errormsgs.append(errormsgs_val)
                     ctx['errormsgs'] = errormsgs
@@ -974,8 +975,6 @@ def download_xls(request):
         }
 
         country = request.GET.get('country')
-        #areas = request.GET.get('areas')
-        #areas = areas.replace(",", "','")
         btn = request.GET.get('btn')
 
         constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
@@ -1004,18 +1003,19 @@ def download_xls(request):
 
         cur.execute(sqlstr)
         rows = cur.fetchall()
+        print rows
 
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = "attachment; filename={file}".format(** {
             'file': corresponding_data[btn]["table_name"] + ".csv"
         })
 
-        writer = csv.writer(response)
+        writer = csv.writer(response, dialect='excel')
         writer.writerow(tuple(corresponding_data[btn]["columns"].split(',')))
 
         for row in rows:
             field_1 = row[0]
-            field_2 = row[1].encode(encoding='UTF-8')
+            field_2 = unidecode(row[1]).encode(encoding='UTF-8')
             fields = [field_1, field_2]
             writer.writerows([fields])
         return response

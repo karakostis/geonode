@@ -690,12 +690,16 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
 
 def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom):
     # CREATE table based on CSV
-    f = open(absolute_base_file, 'rb')
+    #f = open(absolute_base_file, 'rb')
+    import codecs
+    f = codecs.open(absolute_base_file, 'rb', encoding='utf-8')
     delimiter = ","
     no_header_row = False
 
+    print f
     try:
         csv_table = table.Table.from_csv(f, name=table_name_temp, no_header_row=no_header_row, delimiter=delimiter)
+        print csv_table
     except:
         return None, str(sys.exc_info()[0])
 
@@ -805,6 +809,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
             conn.commit()
 
         except:
+            print "failed to create joined table"
             logger.error(
                 "Failed to create joined table")
 
