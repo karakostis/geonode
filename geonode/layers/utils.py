@@ -690,17 +690,17 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
 
 def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom):
     # CREATE table based on CSV
-    import codecs
-    f = codecs.open(absolute_base_file, 'rb', encoding='utf-8')
+    #import codecs
+    #f = codecs.open(absolute_base_file, 'rb', encoding='utf-8')
+    f = open(absolute_base_file, 'rb')
     delimiter = ","
     no_header_row = False
-
-    print f
     try:
         csv_table = table.Table.from_csv(f, name=table_name_temp, no_header_row=no_header_row, delimiter=delimiter)
-        print csv_table
     except:
-        return None, str(sys.exc_info()[0])
+        status_code = '400'
+        errormsgs_val = "Failed to create the table from CSV."
+        return errormsgs_val, status_code
 
     for idx, column in enumerate(csv_table):
         column.name = slugify(unicode(column.name)).replace('-', '_')
@@ -785,7 +785,6 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
                 'id': wrld_table_id,
                 'added_columns': added_columns
             })
-            print sqlstr
             cur.execute(sqlstr)
             conn.commit()
 
@@ -794,14 +793,12 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
                 'new_table_name': new_table,
                 'id': wrld_table_id,
             })
-            print sqlstr
             cur.execute(sqlstr)
             conn.commit()
             sqlstr = "CREATE INDEX indx_geom_{new_table_name} ON {new_table_name} USING GIST({geom});".format(** {
                 'new_table_name': new_table,
                 'geom': wrld_table_geom,
             })
-            print sqlstr
             cur.execute(sqlstr)
             conn.commit()
 

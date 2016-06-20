@@ -823,7 +823,6 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 # Write CSV in the server
                 tempdir, absolute_base_file = form.write_files()
-                print tempdir
                 errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom)
                 print status_code
                 if status_code == '400':
@@ -848,7 +847,6 @@ def layer_create(request, template='layers/layer_create.html'):
             if ctx['success']:
                 status_code = 200
                 layer = 'geonode:' + new_table
-                #return HttpResponseRedirect(template)
 
                 return HttpResponseRedirect(
                     reverse(
@@ -874,24 +872,18 @@ def _create_geoserver_geonode_layer(new_table):
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest")
         workspace = cat.get_workspace(settings.DEFAULT_WORKSPACE)
-        ds = cat.get_store("uploaded") # name of store in WFP-Geonode
-
-        ds.connection_parameters.update(host=settings.DATABASES['uploaded']['HOST'], port=settings.DATABASES['uploaded']['PORT'], database=settings.DATABASES['uploaded']['NAME'], user=settings.DATABASES['uploaded']['USER'], passwd=settings.DATABASES['uploaded']['PASSWORD'], dbtype='postgis', schema='public')
-
+        ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
         ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
 
-        print 'something'
     except Exception as e:
-        print 'somethng else'
+
         msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
+        print msg
         return None, msg
 
 
     # Create the Layer in GeoNode from the GeoServer Layer
     try:
-        '''
-        sld_polygon = '<?xml version="1.0" encoding="ISO-8859-1"?><StyledLayerDescriptor version="1.0.0" xsi:schemaLocation="http://www.opengis.net/sld StyledLayerDescriptor.xsd" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- a Named Layer is the basic building block of an SLD document --><NamedLayer><Name>default_polygon</Name><UserStyle><!-- Styles can have names, titles and abstracts --><Title>Default Polygon</Title><Abstract>A sample style that draws a polygon</Abstract><!-- FeatureTypeStyles describe how to render different features --><!-- A FeatureTypeStyle for rendering polygons --><FeatureTypeStyle><Rule><Name>rule1</Name><Title>test</Title><Abstract>A polygon with a gray fill and a 1 pixel black outline</Abstract><PolygonSymbolizer><Fill><CssParameter name="fill">#AAAAAA</CssParameter></Fill><Stroke><CssParameter name="stroke">#000000</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
-        '''
 
         link_to_sld = "{location}styles/polygon_style.sld".format(** {
             'location': settings.OGC_SERVER['default']['LOCATION']
