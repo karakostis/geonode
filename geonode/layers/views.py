@@ -870,7 +870,7 @@ def _create_geoserver_geonode_layer(new_table):
 
     ## to be added: check if layer name already exists
     try:
-        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest")
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         workspace = cat.get_workspace(settings.DEFAULT_WORKSPACE)
         ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
         ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
