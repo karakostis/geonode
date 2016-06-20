@@ -26,6 +26,7 @@ import autocomplete_light
 
 from django.conf import settings
 from django import forms
+from django.utils.translation import ugettext_lazy as _
 from django.utils import simplejson as json
 from geonode.layers.utils import unzip_file
 from geonode.layers.models import Layer, Attribute
@@ -215,3 +216,85 @@ class LayerStyleUploadForm(forms.Form):
     name = forms.CharField(required=False)
     update = forms.BooleanField(required=False)
     sld = forms.FileField()
+
+
+def get_country_names():
+
+    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+        'dbname': settings.DATABASES['uploaded']['NAME'],
+        'user': settings.DATABASES['uploaded']['USER'],
+        'host': settings.DATABASES['uploaded']['HOST'],
+        'password': settings.DATABASES['uploaded']['PASSWORD']
+    })
+
+    conn = psycopg2.connect(constr)
+    cur = conn.cursor()
+
+    sqlstr = "SELECT DISTINCT ({country_names}) FROM {table} ORDER BY {country_names};".format(** {
+        'country_names': 'adm0_name',
+        'table': 'wld_bnd_adm0_gaul_2015'
+    })
+
+    cur.execute(sqlstr)
+    countries = cur.fetchall()
+    choices_list = []
+    cntr = ['World','World']
+    choices_list.append(cntr)
+    for i in range(len(countries)):
+
+        cntr = [countries[i][0],countries[i][0]]
+        choices_list.append(cntr)
+
+    return choices_list
+
+class UploadCSVForm(forms.Form):
+
+    def __init__(self, *args, **kwargs):
+        super(UploadCSVForm, self).__init__(*args, **kwargs)
+        self.fields['selected_country'] = forms.MultipleChoiceField(choices=get_country_names(), required=True)
+
+    title = forms.CharField(max_length=255, required=True)
+
+    LAYER_TYPE = (
+        ('1', 'Global Layer'),
+        ('2', 'Layer by Admin1'),
+        ('3', 'Layer by Admin2'),
+        ('3', 'Layer by Location'),
+    )
+    layer_type = forms.ChoiceField(choices=LAYER_TYPE, required=True)
+
+    csv = forms.FileField(required=True)
+
+
+    def write_files(self):
+
+        absolute_base_file = None
+        tempdir = tempfile.mkdtemp()
+
+        f = self.cleaned_data['csv']
+
+        if f is not None:
+            path = os.path.join(tempdir, f.name)
+            with open(path, 'wb') as writable:
+                for c in f.chunks():
+                    writable.write(c)
+        absolute_base_file = os.path.join(tempdir,self.cleaned_data["csv"].name)
+
+
+
+        return tempdir, absolute_base_file
+
+
+    def clean(self):
+        cleaned_data = super(UploadCSVForm, self).clean()
+        csv_file = self.cleaned_data.get('csv')
+        if not csv_file:
+            raise forms.ValidationError(_("CSV must be a file."))
+
+        else:
+            csv_file_type = str(csv_file).split('.')
+            if csv_file_type[1] not in ['csv','CSV']:
+                print csv_file_type[1]
+                raise forms.ValidationError(_("This is not a supported format. Please upload a CSV file."))
+
+        return cleaned_data
