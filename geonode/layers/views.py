@@ -729,7 +729,6 @@ def layer_thumbnail(request, layername):
 
 
 
-
 @login_required
 def layer_create(request, template='layers/layer_create.html'):
 
@@ -778,7 +777,6 @@ def layer_create(request, template='layers/layer_create.html'):
         countries = cur.fetchall()
         countries = [c[0] for c in countries]
         ctx['countries'] = countries
-
 
         form = UploadCSVForm(request.POST, request.FILES)
         errormsgs = []
@@ -833,8 +831,7 @@ def layer_create(request, template='layers/layer_create.html'):
                     ctx['errormsgs'] = errormsgs
                     return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries, 'errormsgs': errormsgs}))
 
-
-                # CREATE LAYER IN GEOSERVER AND IN GEONODE
+                #  create layer in geoserver
                 _create_geoserver_geonode_layer(new_table)
 
                 ctx['success'] = True
@@ -850,8 +847,6 @@ def layer_create(request, template='layers/layer_create.html'):
 
             if ctx['success']:
                 status_code = 200
-                #template = '/layers/geonode:' + new_table + '/metadata'
-                #print template
                 layer = 'geonode:' + new_table
                 #return HttpResponseRedirect(template)
 
@@ -861,8 +856,6 @@ def layer_create(request, template='layers/layer_create.html'):
                         args=(
                             layer,
                         )))
-
-                #return render_to_response(template, RequestContext(request, {'form': form}))
         else:
 
             for e in form.errors.values():
@@ -896,17 +889,17 @@ def _create_geoserver_geonode_layer(new_table):
 
     # Create the Layer in GeoNode from the GeoServer Layer
     try:
-
-        # get the sld for this layer
-        #style = cat.get_style("polygon")
-        #print style.href
-
         '''
         sld_polygon = '<?xml version="1.0" encoding="ISO-8859-1"?><StyledLayerDescriptor version="1.0.0" xsi:schemaLocation="http://www.opengis.net/sld StyledLayerDescriptor.xsd" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- a Named Layer is the basic building block of an SLD document --><NamedLayer><Name>default_polygon</Name><UserStyle><!-- Styles can have names, titles and abstracts --><Title>Default Polygon</Title><Abstract>A sample style that draws a polygon</Abstract><!-- FeatureTypeStyles describe how to render different features --><!-- A FeatureTypeStyle for rendering polygons --><FeatureTypeStyle><Rule><Name>rule1</Name><Title>test</Title><Abstract>A polygon with a gray fill and a 1 pixel black outline</Abstract><PolygonSymbolizer><Fill><CssParameter name="fill">#AAAAAA</CssParameter></Fill><Stroke><CssParameter name="stroke">#000000</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
         '''
-        import requests
 
-        r = requests.get('http://staging.geonode.wfp.org/geoserver/styles/polygon.sld')
+        link_to_sld = "{location}styles/polygon_style.sld".format(** {
+            'location': settings.OGC_SERVER['default']['LOCATION']
+        })
+
+        import requests
+        #  r = requests.get('http://staging.geonode.wfp.org/geoserver/styles/polygon.sld')
+        r = requests.get(link_to_sld)
         sld_polygon = r.text
         cat.create_style(new_table, sld_polygon, overwrite=True)
         style = cat.get_style(new_table)
@@ -914,49 +907,20 @@ def _create_geoserver_geonode_layer(new_table):
         layer.default_style = style
         cat.save(layer)
 
-        #print sld_polygon
-
-        #test = cat.create_style("testing_sld", style)
-        #print test
-
         gsslurp_output = gs_slurp(filter=new_table)
         from geonode.base.models import ResourceBase
-        #print gsslurp_output
         layer = ResourceBase.objects.get(title=new_table)
-        #print layer
-
         output_2 = geoserver_post_save(layer, ResourceBase)
-        #print output_2
 
-
-        # create the geonode layer manually
-        '''
-        layer, created = Layer.objects.get_or_create(name=new_table, defaults={
-            "workspace": workspace.name,
-            "store": ds.name,
-            "storeType": ds.resource_type,
-            "typename": "%s:%s" % (workspace.name.encode('utf-8'), ft.name.encode('utf-8')),
-            "title": ft.title or 'No title provided',
-            "abstract": ft.abstract or 'No abstract provided',
-            "uuid": str(uuid.uuid4()),
-            "bbox_x0": Decimal(ft.latlon_bbox[0]),
-            "bbox_x1": Decimal(ft.latlon_bbox[1]),
-            "bbox_y0": Decimal(ft.latlon_bbox[2]),
-            "bbox_y1": Decimal(ft.latlon_bbox[3])
-        })
-        '''
-        #set_attributes(layer, overwrite=True)
     except Exception as e:
         msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))
         return None, msg
 
 
 @login_required
-def download_xls(request):
+def download_csv(request):
 
     if request.method == 'GET':
-
-
         corresponding_data = {
             "country": {
                 "columns": "adm0_code,adm0_name",
@@ -996,7 +960,6 @@ def download_xls(request):
             sqlstr = "SELECT {columns} FROM {table} WHERE {column_1} = '{country}' ORDER BY 2".format(** {
                 'columns': corresponding_data[btn]["columns"],
                 'country': country,
-                #'areas': areas,
                 'table': corresponding_data[btn]["table_name"],
                 'column_1': corresponding_data[btn]["column_1"],
             })

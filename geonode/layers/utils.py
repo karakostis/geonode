@@ -690,7 +690,6 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
 
 def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom):
     # CREATE table based on CSV
-    #f = open(absolute_base_file, 'rb')
     import codecs
     f = codecs.open(absolute_base_file, 'rb', encoding='utf-8')
     delimiter = ","
@@ -744,7 +743,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
                 table_name_temp,
                 str(e))
 
-        # COPY DATA TO TABLE
+        #  copy data to table
         connection_string = "postgresql://%s:%s@%s:%s/%s" % (settings.DATABASES['uploaded']['USER'], settings.DATABASES['uploaded']['PASSWORD'], settings.DATABASES['uploaded']['HOST'], settings.DATABASES['uploaded']['PORT'], settings.DATABASES['uploaded']['NAME'])
         try:
             engine, metadata = sql.get_connection(connection_string)
@@ -765,9 +764,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
         trans.commit()
         conn_eng.close()
 
-
         # CREATE JOINED TABLE - DROP table_name_temp
-
         new_clmns = []
         for idx, item in enumerate(headers):
             if (idx > 1): # the downloaded layer contains two columns from the global table, which we dont want to include them again
