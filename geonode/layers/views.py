@@ -320,56 +320,66 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     })
 
     try:
-        # get layer's attributes with display_order gt 0
-        attr_to_display = layer.attribute_set.filter(display_order__gt=0)
-        layers_attributes = []
-        for values in attr_to_display.values('attribute'):
-            layers_attributes.append(values['attribute'])
 
-        # get schema for specific layer
-        wfs = WebFeatureService(location, version='1.1.0')
-        schema = wfs.get_schema(name)
+        # get type of layer (raster or vector)
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+        resource = cat.get_resource(name, workspace=workspace)
+        resource_type = str(type(resource))
 
-        if 'the_geom' in schema['properties']:
-            schema['properties'].pop('the_geom', None)
-        elif 'geom' in schema['properties']:
-            schema['properties'].pop("geom", None)
+        if resource_type == "<class 'geoserver.resource.Coverage'>":
+            context_dict["layer_type"] = "raster"
+        elif resource_type == "<class 'geoserver.resource.FeatureType'>":
+            context_dict["layer_type"] = "vector"
+            # get layer's attributes with display_order gt 0
+            attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+            layers_attributes = []
+            for values in attr_to_display.values('attribute'):
+                layers_attributes.append(values['attribute'])
 
-        # filter the schema dict based on the values of layers_attributes
-        layer_attributes_schema = []
-        for key in schema['properties'].keys():
-            if key in layers_attributes:
-                layer_attributes_schema.append(key)
-            else:
-                schema['properties'].pop(key, None)
+            # get schema for specific layer
+            wfs = WebFeatureService(location, version='1.1.0')
+            schema = wfs.get_schema(name)
 
-        filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
+            if 'the_geom' in schema['properties']:
+                schema['properties'].pop('the_geom', None)
+            elif 'geom' in schema['properties']:
+                schema['properties'].pop("geom", None)
 
-        context_dict["schema"] = schema
-        response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
+            # filter the schema dict based on the values of layers_attributes
+            layer_attributes_schema = []
+            for key in schema['properties'].keys():
+                if key in layers_attributes:
+                    layer_attributes_schema.append(key)
+                else:
+                    schema['properties'].pop(key, None)
 
-        features_response = json.dumps(json.loads(response.read()))
-        decoded = json.loads(features_response)
-        decoded_features = decoded['features']
+            filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
 
-        properties = {}
-        for key in decoded_features[0]['properties']:
-            properties[key] = []
+            context_dict["schema"] = schema
+            response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
 
-        # loop the dictionary based on the values on the list and add the propertie
-        # in the dictionary (if doesn't exist) together with the value
+            features_response = json.dumps(json.loads(response.read()))
+            decoded = json.loads(features_response)
+            decoded_features = decoded['features']
 
-        for i in range(len(decoded_features)):
-            for key, value in decoded_features[i]['properties'].iteritems():
-                if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
-                    properties[key].append(value)
+            properties = {}
+            for key in decoded_features[0]['properties']:
+                properties[key] = []
 
-        for key in properties:
-            properties[key].sort()
-            
-        context_dict["feature_properties"] = properties
+            # loop the dictionary based on the values on the list and add the propertie
+            # in the dictionary (if doesn't exist) together with the value
 
-        print "OWSLib worked as expected"
+            for i in range(len(decoded_features)):
+                for key, value in decoded_features[i]['properties'].iteritems():
+                    if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
+                        properties[key].append(value)
+
+            for key in properties:
+                properties[key].sort()
+
+            context_dict["feature_properties"] = properties
+
+            print "OWSLib worked as expected"
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
 
