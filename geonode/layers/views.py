@@ -320,15 +320,12 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     })
 
     try:
-
         # get type of layer (raster or vector)
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         resource = cat.get_resource(name, workspace=workspace)
-        resource_type = str(type(resource))
-
-        if resource_type == "<class 'geoserver.resource.Coverage'>":
+        if (type(resource).__name__ == 'Coverage'):
             context_dict["layer_type"] = "raster"
-        elif resource_type == "<class 'geoserver.resource.FeatureType'>":
+        elif (type(resource).__name__ == 'FeatureType'):
             context_dict["layer_type"] = "vector"
             # get layer's attributes with display_order gt 0
             attr_to_display = layer.attribute_set.filter(display_order__gt=0)
