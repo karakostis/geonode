@@ -688,7 +688,7 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
         instance.save_thumbnail(filename, image=image)
 
 
-def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom):
+def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom):
     # CREATE table based on CSV
     #import codecs
     #f = codecs.open(absolute_base_file, 'rb', encoding='utf-8')
@@ -706,7 +706,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
         column.name = slugify(unicode(column.name)).replace('-', '_')
         # check if the selected value from the dropdown menu matches the first value of the CSV header
         if idx == 0:
-            if column.name != wrld_table_id:
+            if column.name != geom_table_id:
                 errormsgs_val = "The selected value of admin code doesn't match the one with the imported layer"
                 status_code = '400'
                 return errormsgs_val, status_code
@@ -732,10 +732,15 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
         conn = psycopg2.connect(constr)
 
         try:
-            # create table - if it exists then drop it
+            #  if table exists then drop it - the create it and add primary key
             cur = conn.cursor()
             cur.execute('DROP TABLE IF EXISTS %s CASCADE;' % table_name_temp)
             cur.execute(create_table_sql)
+            conn.commit()
+            sqlstr = "ALTER TABLE IF EXISTS {temp_table} ADD COLUMN fid SERIAL PRIMARY KEY;".format(** {
+                'temp_table': table_name_temp
+            })
+            cur.execute(sqlstr)
             conn.commit()
         except Exception as e:
             logger.error(
@@ -777,27 +782,31 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_
         added_columns = ', '.join(new_clmns)
 
         try:
-            sqlstr = "CREATE TABLE {new_table_name} AS (SELECT {wrld_table_columns}, {added_columns} FROM {wrld_table} INNER JOIN {temp_table} ON ({wrld_table}.{id} = {temp_table}.{id}));".format(** {
+            sqlstr = "CREATE TABLE {new_table_name} AS (SELECT {geom_table_columns}, {added_columns} FROM {geom_table} INNER JOIN {temp_table} ON (g.{id} = {temp_table}.{id}));".format(** {
                 'new_table_name': new_table,
-                'wrld_table': wrld_table_name,
-                'wrld_table_columns': wrld_table_columns,
+                'geom_table': geom_table_name,
+                'geom_table_columns': geom_table_columns,
                 'temp_table': table_name_temp,
-                'id': wrld_table_id,
+                'id': geom_table_id,
                 'added_columns': added_columns
             })
             cur.execute(sqlstr)
             conn.commit()
-
+            sqlstr = "ALTER TABLE IF EXISTS {new_table_name} ADD COLUMN fid SERIAL PRIMARY KEY;".format(** {
+                'new_table_name': new_table
+            })
+            cur.execute(sqlstr)
+            conn.commit()
 
             sqlstr = "CREATE INDEX indx_{new_table_name} ON {new_table_name} USING btree({id});".format(** {
                 'new_table_name': new_table,
-                'id': wrld_table_id,
+                'id': geom_table_id,
             })
             cur.execute(sqlstr)
             conn.commit()
             sqlstr = "CREATE INDEX indx_geom_{new_table_name} ON {new_table_name} USING GIST({geom});".format(** {
                 'new_table_name': new_table,
-                'geom': wrld_table_geom,
+                'geom': geom_table_geom,
             })
             cur.execute(sqlstr)
             conn.commit()

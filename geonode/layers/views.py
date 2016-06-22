@@ -789,31 +789,31 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 layer_based_info = {
                     "1": {
-                        "wrld_table": "wld_bnd_adm0_gaul_2015",
+                        "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
                         "id": "adm0_code",
-                        "columns": "wld_bnd_adm0_gaul_2015.adm0_code, wld_bnd_adm0_gaul_2015.adm0_name, wld_bnd_adm0_gaul_2015.wkb_geometry",
+                        "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
                         "geom": "wkb_geometry"
                         },
                     "2": {
-                        "wrld_table": "wld_bnd_adm1_gaul_2015",
+                        "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
                         "id": "adm1_code",
-                        "columns": "wld_bnd_adm1_gaul_2015.adm0_code, wld_bnd_adm1_gaul_2015.adm0_name, wld_bnd_adm1_gaul_2015.adm1_code, wld_bnd_adm1_gaul_2015.adm1_name, wld_bnd_adm1_gaul_2015.geom",
+                        "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
                         "geom": "geom"
                         },
                     "3": {
-                        "wrld_table": "wld_bnd_adm2_gaul_2015",
+                        "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
                         "id": "adm2_code",
-                        "columns": "wld_bnd_adm2_gaul_2015.adm0_code, wld_bnd_adm2_gaul_2015.adm0_name, wld_bnd_adm2_gaul_2015.adm1_code, wld_bnd_adm2_gaul_2015.adm1_name, wld_bnd_adm2_gaul_2015.adm2_code, wld_bnd_adm2_gaul_2015.adm2_name, wld_bnd_adm2_gaul_2015.geom",
+                        "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
                         "geom": "geom"
                         }
                 }
 
                 layer_type = form.cleaned_data["layer_type"]
 
-                wrld_table_name = layer_based_info[layer_type[0]]['wrld_table']
-                wrld_table_id = layer_based_info[layer_type[0]]['id']
-                wrld_table_geom = layer_based_info[layer_type[0]]['geom']
-                wrld_table_columns = layer_based_info[layer_type[0]]['columns']
+                geom_table_name = layer_based_info[layer_type[0]]['geom_table']
+                geom_table_id = layer_based_info[layer_type[0]]['id']
+                geom_table_geom = layer_based_info[layer_type[0]]['geom']
+                geom_table_columns = layer_based_info[layer_type[0]]['columns']
                 selected_country = form.cleaned_data["selected_country"]
                 cntr_name = slugify(selected_country[0].replace(" ", "_"))
                 table_name_temp = "%s_%s_temp" % (cntr_name, title)
@@ -823,7 +823,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 # Write CSV in the server
                 tempdir, absolute_base_file = form.write_files()
-                errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, wrld_table_name, wrld_table_id, wrld_table_columns, wrld_table_geom)
+                errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom)
                 print status_code
                 if status_code == '400':
                     errormsgs.append(errormsgs_val)
@@ -871,9 +871,8 @@ def _create_geoserver_geonode_layer(new_table):
     ## to be added: check if layer name already exists
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
-        workspace = cat.get_workspace(settings.DEFAULT_WORKSPACE)
         ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
-        ft = cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
+        cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
 
     except Exception as e:
 
@@ -899,10 +898,10 @@ def _create_geoserver_geonode_layer(new_table):
         layer.default_style = style
         cat.save(layer)
 
-        gsslurp_output = gs_slurp(filter=new_table)
+        gs_slurp(filter=new_table)
         from geonode.base.models import ResourceBase
         layer = ResourceBase.objects.get(title=new_table)
-        output_2 = geoserver_post_save(layer, ResourceBase)
+        geoserver_post_save(layer, ResourceBase)
 
     except Exception as e:
         msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))
