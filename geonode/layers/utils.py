@@ -689,9 +689,7 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
 
 
 def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom):
-    # CREATE table based on CSV
-    #import codecs
-    #f = codecs.open(absolute_base_file, 'rb', encoding='utf-8')
+    # Create table based on CSV
     f = open(absolute_base_file, 'rb')
     delimiter = ","
     no_header_row = False
@@ -702,20 +700,20 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         errormsgs_val = "Failed to create the table from CSV."
         return errormsgs_val, status_code
 
+
     for idx, column in enumerate(csv_table):
         column.name = slugify(unicode(column.name)).replace('-', '_')
-        # check if the selected value from the dropdown menu matches the first value of the CSV header
+        # Check if the selected value from the dropdown menu matches the first value of the CSV header
         if idx == 0:
             if column.name != geom_table_id:
-                errormsgs_val = "The selected value of admin code doesn't match the one with the imported layer"
+                errormsgs_val = "The selected value of Layer Type doesn't match the one of the imported layer."
                 status_code = '400'
                 return errormsgs_val, status_code
-
-    if idx < 2:  # check if there are added columns in the CSV
-        errormsgs_val = "The CSV has no added columns. Please add extra columns"
+    # Check if there are added columns in the CSV
+    if idx < 2:
+        errormsgs_val = "The CSV has no added columns. Please add extra columns."
         status_code = '400'
         return errormsgs_val, status_code
-
     else:
         try:
             sql_table = sql.make_table(csv_table, table_name_temp)
@@ -732,8 +730,20 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         conn = psycopg2.connect(constr)
 
         try:
-            #  if table exists then drop it - the create it and add primary key
+            # Check if there is already a table with the same name
             cur = conn.cursor()
+
+            sqlstr = "SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='{new_table_name}');".format(** {
+                'new_table_name': new_table
+            })
+            cur.execute(sqlstr)
+            exists = cur.fetchone()[0]
+            if exists:
+                errormsgs_val = "There is already a layer with this name. Please choose another title."
+                status_code = '400'
+                return errormsgs_val, status_code
+
+            #  If temporary table exists then drop it - the create it and add primary key
             cur.execute('DROP TABLE IF EXISTS %s CASCADE;' % table_name_temp)
             cur.execute(create_table_sql)
             conn.commit()
@@ -748,7 +758,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
                 table_name_temp,
                 str(e))
 
-        #  copy data to table
+        #  Copy data to table
         connection_string = "postgresql://%s:%s@%s:%s/%s" % (settings.DATABASES['uploaded']['USER'], settings.DATABASES['uploaded']['PASSWORD'], settings.DATABASES['uploaded']['HOST'], settings.DATABASES['uploaded']['PORT'], settings.DATABASES['uploaded']['NAME'])
         try:
             engine, metadata = sql.get_connection(connection_string)
@@ -769,10 +779,10 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         trans.commit()
         conn_eng.close()
 
-        # CREATE JOINED TABLE - DROP table_name_temp
+        # Create joined table - drop table_name_temp
         new_clmns = []
         for idx, item in enumerate(headers):
-            if (idx > 1): # the downloaded layer contains two columns from the global table, which we dont want to include them again
+            if (idx > 1):  # The downloaded layer contains two columns from the global table, which do not include them again
                 new_column = "{table_name}.{item}".format(** {
                     'table_name': table_name_temp,
                     'item': item
@@ -780,8 +790,9 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
                 new_clmns.append(new_column)
 
         added_columns = ', '.join(new_clmns)
-
         try:
+
+            # Joined table
             sqlstr = "CREATE TABLE {new_table_name} AS (SELECT {geom_table_columns}, {added_columns} FROM {geom_table} INNER JOIN {temp_table} ON (g.{id} = {temp_table}.{id}));".format(** {
                 'new_table_name': new_table,
                 'geom_table': geom_table_name,
@@ -810,11 +821,11 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
             })
             cur.execute(sqlstr)
             conn.commit()
-
+            
         except:
-            print "failed to create joined table"
+            print "Failed to create joined table."
             logger.error(
-                "Failed to create joined table")
+                "Failed to create joined table.")
 
         try:
             sqlstr = "DROP TABLE IF EXISTS {temp_table} CASCADE;".format(** {
@@ -824,7 +835,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
             conn.commit()
         except:
             logger.error(
-                "Failed to drop temporary table")
+                "Failed to drop temporary table.")
         conn.close()
 
         status_code = 200
