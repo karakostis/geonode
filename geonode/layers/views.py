@@ -68,9 +68,8 @@ from geonode.layers.forms import UploadCSVForm
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
 from geonode.utils import build_social_links
-from geonode.geoserver.helpers import cascading_delete, gs_catalog, gs_slurp
+from geonode.geoserver.helpers import gs_slurp
 from geonode.geoserver.signals import geoserver_post_save
-
 
 
 CONTEXT_LOG_FILE = None
@@ -887,7 +886,6 @@ def _create_geoserver_geonode_layer(new_table):
         print msg
         return None, msg
 
-
     # Create the Layer in GeoNode from the GeoServer Layer
     try:
 
@@ -912,7 +910,6 @@ def _create_geoserver_geonode_layer(new_table):
     except Exception as e:
         msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))
         return None, msg
-
 
 @login_required
 def download_csv(request):
