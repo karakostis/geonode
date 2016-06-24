@@ -762,9 +762,9 @@ def layer_create(request, template='layers/layer_create.html'):
         countries = [c[0] for c in countries]
         ctx['countries'] = countries
 
-        form = UploadCSVForm()
+        form_csv_layer = UploadCSVForm()
         form_empty_layer = UploadEmptyLayerForm()
-        ctx['form'] = form
+        ctx['form_csv_layer'] = form_csv_layer
         ctx['form_empty_layer'] = form_empty_layer
         return render_to_response(template, RequestContext(request, ctx))
 
@@ -788,20 +788,17 @@ def layer_create(request, template='layers/layer_create.html'):
         countries = [c[0] for c in countries]
         ctx['countries'] = countries
 
-
-
         if 'fromlayerbtn' in request.POST:
 
-
-            form = UploadCSVForm(request.POST, request.FILES)
+            form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
 
             errormsgs = []
             ctx['success'] = False
 
-            if form.is_valid():
+            if form_csv_layer.is_valid():
                 try:
-                    title = form.cleaned_data["title"]
+                    title = form_csv_layer.cleaned_data["title"]
 
                     layer_based_info = {
                         "1": {
@@ -824,13 +821,13 @@ def layer_create(request, template='layers/layer_create.html'):
                             }
                     }
 
-                    layer_type = form.cleaned_data["layer_type"]
+                    layer_type = form_csv_layer.cleaned_data["layer_type"]
 
                     geom_table_name = layer_based_info[layer_type[0]]['geom_table']
                     geom_table_id = layer_based_info[layer_type[0]]['id']
                     geom_table_geom = layer_based_info[layer_type[0]]['geom']
                     geom_table_columns = layer_based_info[layer_type[0]]['columns']
-                    selected_country = form.cleaned_data["selected_country"]
+                    selected_country = form_csv_layer.cleaned_data["selected_country"]
                     cntr_name = slugify(selected_country[0].replace(" ", "_"))
                     table_name_temp = "%s_%s_temp" % (cntr_name, title)
                     table_name = "%s_%s" % (cntr_name, title)
@@ -838,13 +835,13 @@ def layer_create(request, template='layers/layer_create.html'):
                     new_table = table_name
 
                     # Write CSV in the server
-                    tempdir, absolute_base_file = form.write_files()
+                    tempdir, absolute_base_file = form_csv_layer.write_files()
                     errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom)
                     print status_code
                     if status_code == '400':
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_excel')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv')}))
 
                     #  create layer in geoserver
                     _create_geoserver_geonode_layer(new_table)
@@ -872,36 +869,36 @@ def layer_create(request, template='layers/layer_create.html'):
                             )))
             else:
 
-                for e in form.errors.values():
+                for e in form_csv_layer.errors.values():
                     errormsgs.append([escape(v) for v in e])
 
-                ctx['errors'] = form.errors
+                ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
-                return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_excel')}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_csv')}))
 
 
         elif 'emptylayerbtn' in request.POST:
             ctx = {}
-            form = UploadCSVForm(request.POST, request.FILES)
+            form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
 
             errormsgs = []
             ctx['success'] = False
 
             if form_empty_layer.is_valid():
-                return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries}))
 
             else:
 
                 for e in form_empty_layer.errors.values():
                     errormsgs.append([escape(v) for v in e])
 
-                ctx['errors'] = form.errors
+                ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
 
-                return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
 
 
 

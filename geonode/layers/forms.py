@@ -290,7 +290,6 @@ class UploadCSVForm(forms.Form):
         csv_file = self.cleaned_data.get('csv')
         if not csv_file:
             raise forms.ValidationError(_("Please select a CSV file."))
-
         else:
             csv_file_type = str(csv_file).split('.')
             if csv_file_type[1] not in ['csv','CSV']:
