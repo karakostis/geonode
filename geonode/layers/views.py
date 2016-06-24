@@ -63,7 +63,7 @@ from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_
 from geonode.layers.utils import file_upload, is_raster, is_vector
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
-from geonode.layers.forms import UploadCSVForm
+from geonode.layers.forms import UploadCSVForm, UploadEmptyLayerForm
 
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
@@ -763,7 +763,9 @@ def layer_create(request, template='layers/layer_create.html'):
         ctx['countries'] = countries
 
         form = UploadCSVForm()
+        form_empty_layer = UploadEmptyLayerForm()
         ctx['form'] = form
+        ctx['form_empty_layer'] = form_empty_layer
         return render_to_response(template, RequestContext(request, ctx))
 
     elif request.method == 'POST':
@@ -786,90 +788,121 @@ def layer_create(request, template='layers/layer_create.html'):
         countries = [c[0] for c in countries]
         ctx['countries'] = countries
 
-        form = UploadCSVForm(request.POST, request.FILES)
-        errormsgs = []
-        ctx['success'] = False
 
-        if form.is_valid():
-            try:
-                title = form.cleaned_data["title"]
 
-                layer_based_info = {
-                    "1": {
-                        "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
-                        "id": "adm0_code",
-                        "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
-                        "geom": "wkb_geometry"
-                        },
-                    "2": {
-                        "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
-                        "id": "adm1_code",
-                        "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
-                        "geom": "geom"
-                        },
-                    "3": {
-                        "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
-                        "id": "adm2_code",
-                        "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
-                        "geom": "geom"
-                        }
-                }
+        if 'fromlayerbtn' in request.POST:
 
-                layer_type = form.cleaned_data["layer_type"]
 
-                geom_table_name = layer_based_info[layer_type[0]]['geom_table']
-                geom_table_id = layer_based_info[layer_type[0]]['id']
-                geom_table_geom = layer_based_info[layer_type[0]]['geom']
-                geom_table_columns = layer_based_info[layer_type[0]]['columns']
-                selected_country = form.cleaned_data["selected_country"]
-                cntr_name = slugify(selected_country[0].replace(" ", "_"))
-                table_name_temp = "%s_%s_temp" % (cntr_name, title)
-                table_name = "%s_%s" % (cntr_name, title)
-                table_name_temp = table_name_temp
-                new_table = table_name
+            form = UploadCSVForm(request.POST, request.FILES)
+            form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
 
-                # Write CSV in the server
-                tempdir, absolute_base_file = form.write_files()
-                errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom)
-                print status_code
-                if status_code == '400':
-                    errormsgs.append(errormsgs_val)
-                    ctx['errormsgs'] = errormsgs
-                    return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries, 'errormsgs': errormsgs}))
-
-                #  create layer in geoserver
-                _create_geoserver_geonode_layer(new_table)
-
-                ctx['success'] = True
-
-            except Exception as e:
-                ctx['success'] = False
-                ctx['errors'] = str(e)
-
-            finally:
-
-                if tempdir is not None:
-                    shutil.rmtree(tempdir)
-
-            if ctx['success']:
-                status_code = 200
-                layer = 'geonode:' + new_table
-
-                return HttpResponseRedirect(
-                    reverse(
-                        'layer_metadata',
-                        args=(
-                            layer,
-                        )))
-        else:
-
-            for e in form.errors.values():
-                errormsgs.append([escape(v) for v in e])
-
-            ctx['errors'] = form.errors
-            ctx['errormsgs'] = errormsgs
+            errormsgs = []
             ctx['success'] = False
-            return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries}))
+
+            if form.is_valid():
+                try:
+                    title = form.cleaned_data["title"]
+
+                    layer_based_info = {
+                        "1": {
+                            "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
+                            "id": "adm0_code",
+                            "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
+                            "geom": "wkb_geometry"
+                            },
+                        "2": {
+                            "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
+                            "id": "adm1_code",
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
+                            "geom": "geom"
+                            },
+                        "3": {
+                            "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
+                            "id": "adm2_code",
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
+                            "geom": "geom"
+                            }
+                    }
+
+                    layer_type = form.cleaned_data["layer_type"]
+
+                    geom_table_name = layer_based_info[layer_type[0]]['geom_table']
+                    geom_table_id = layer_based_info[layer_type[0]]['id']
+                    geom_table_geom = layer_based_info[layer_type[0]]['geom']
+                    geom_table_columns = layer_based_info[layer_type[0]]['columns']
+                    selected_country = form.cleaned_data["selected_country"]
+                    cntr_name = slugify(selected_country[0].replace(" ", "_"))
+                    table_name_temp = "%s_%s_temp" % (cntr_name, title)
+                    table_name = "%s_%s" % (cntr_name, title)
+                    table_name_temp = table_name_temp
+                    new_table = table_name
+
+                    # Write CSV in the server
+                    tempdir, absolute_base_file = form.write_files()
+                    errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom)
+                    print status_code
+                    if status_code == '400':
+                        errormsgs.append(errormsgs_val)
+                        ctx['errormsgs'] = errormsgs
+                        return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_excel')}))
+
+                    #  create layer in geoserver
+                    _create_geoserver_geonode_layer(new_table)
+
+                    ctx['success'] = True
+
+                except Exception as e:
+                    ctx['success'] = False
+                    ctx['errors'] = str(e)
+
+                finally:
+
+                    if tempdir is not None:
+                        shutil.rmtree(tempdir)
+
+                if ctx['success']:
+                    status_code = 200
+                    layer = 'geonode:' + new_table
+
+                    return HttpResponseRedirect(
+                        reverse(
+                            'layer_metadata',
+                            args=(
+                                layer,
+                            )))
+            else:
+
+                for e in form.errors.values():
+                    errormsgs.append([escape(v) for v in e])
+
+                ctx['errors'] = form.errors
+                ctx['errormsgs'] = errormsgs
+                ctx['success'] = False
+                return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_excel')}))
+
+
+        elif 'emptylayerbtn' in request.POST:
+            ctx = {}
+            form = UploadCSVForm(request.POST, request.FILES)
+            form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
+
+            errormsgs = []
+            ctx['success'] = False
+
+            if form_empty_layer.is_valid():
+                return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries}))
+
+            else:
+
+                for e in form_empty_layer.errors.values():
+                    errormsgs.append([escape(v) for v in e])
+
+                ctx['errors'] = form.errors
+                ctx['errormsgs'] = errormsgs
+                ctx['success'] = False
+
+                return render_to_response(template, RequestContext(request, {'form': form, 'form_empty_layer': form_empty_layer, 'countries': countries}))
+
 
 
 def _create_geoserver_geonode_layer(new_table):

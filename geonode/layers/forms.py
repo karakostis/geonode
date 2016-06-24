@@ -297,3 +297,15 @@ class UploadCSVForm(forms.Form):
                 print csv_file_type[1]
                 raise forms.ValidationError(_("This is not a supported format. Please upload a CSV file."))
         return cleaned_data
+
+
+class UploadEmptyLayerForm(forms.Form):
+
+    empty_layer_name = forms.CharField(max_length=255, required=True, label="Name of new layer")
+
+    GEOM_TYPE = (
+        ('POINT', 'Points'),
+        ('MULTILINESTRING', 'Lines'),
+        ('MULTIPOLYGON', 'Polygons')
+    )
+    geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
