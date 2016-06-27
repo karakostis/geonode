@@ -881,15 +881,31 @@ def layer_create(request, template='layers/layer_create.html'):
         elif 'emptylayerbtn' in request.POST:
             ctx = {}
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
-            form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
+            #  form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
+            form_empty_layer = UploadEmptyLayerForm(request.POST, extra=request.POST.get('extra_field_count_2'))
+            #form_empty_layer = UploadEmptyLayerForm(request.POST)
+
 
             errormsgs = []
             ctx['success'] = False
 
             if form_empty_layer.is_valid():
-                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries}))
+
+                data = form_empty_layer.cleaned_data
+                print data
+
+
+
+                empty_layer_name = form_empty_layer.cleaned_data["empty_layer_name"]
+                #print empty_layer_name
+                extra_field_count = form_empty_layer.cleaned_data["extra_field_count"]
+
+
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
 
             else:
+
+                print ("error")
 
                 for e in form_empty_layer.errors.values():
                     errormsgs.append([escape(v) for v in e])
