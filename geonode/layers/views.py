@@ -895,7 +895,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 print "valid"
                 print data
 
-
+                
 
                 empty_layer_name = form_empty_layer.cleaned_data["empty_layer_name"]
                 #print empty_layer_name
