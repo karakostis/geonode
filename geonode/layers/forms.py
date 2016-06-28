@@ -313,43 +313,19 @@ class UploadEmptyLayerForm(forms.Form):
 
     extra_field_count = forms.CharField(widget=forms.HiddenInput())
 
-
     def __init__(self, *args, **kwargs):
-        print args
-        myDict = {}
-        for arg in args:
-
-            #print arg['extra_field_count']
-            print type(arg)
-            myDict = dict(arg.iterlists())
-            print type(myDict)
-            print myDict['extra_field_count'][0]
-            print myDict['extra_field_count'][1]
-            print 'sdsfs'
-
-            myDict['extra_field_0'] = myDict['extra_field_count'][0]
-            myDict['extra_field_1'] = myDict['extra_field_count'][1]
-
-
-        print myDict
-
-
-
-
         extra_fields = kwargs.pop('extra', 0)
-
-
-
+        print extra_fields
         if not extra_fields:
             extra_fields = 0
 
         super(UploadEmptyLayerForm, self).__init__(*args, **kwargs)
-
         self.fields['extra_field_count'].initial = extra_fields
-
+        print extra_fields
+        print ("int")
+        print int(extra_fields)
 
         for index in range(int(extra_fields)):
+            print index
             # generate extra fields in the number specified via extra_fields
-            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(required = False)
-            #self.fields['extra_field_{index}'.format(index=index)] = forms.ChoiceField(required = True)
-            #self.fields['data_type'] = forms.ChoiceField(required = True)
+            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField()

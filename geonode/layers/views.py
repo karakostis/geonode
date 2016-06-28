@@ -882,7 +882,7 @@ def layer_create(request, template='layers/layer_create.html'):
             ctx = {}
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             #  form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
-            form_empty_layer = UploadEmptyLayerForm(request.POST, extra=request.POST.get('extra_field_count_2'))
+            form_empty_layer = UploadEmptyLayerForm(request.POST, extra=request.POST.get('extra_field_count'))
             #form_empty_layer = UploadEmptyLayerForm(request.POST)
 
 
@@ -892,6 +892,7 @@ def layer_create(request, template='layers/layer_create.html'):
             if form_empty_layer.is_valid():
 
                 data = form_empty_layer.cleaned_data
+                print "valid"
                 print data
 
 
@@ -913,6 +914,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
+
 
                 return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
 
