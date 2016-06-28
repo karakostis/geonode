@@ -379,7 +379,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             for key in properties:
                 properties[key].sort()
 
-            context_dict["feature_properties"] = properties
+            context_dict["feature_properties"] = json.dumps(properties)
 
             print "OWSLib worked as expected"
     except:
