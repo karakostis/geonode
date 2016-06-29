@@ -311,7 +311,7 @@ class UploadEmptyLayerForm(forms.Form):
     geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
 
 
-    extra_field_count = forms.CharField(widget=forms.HiddenInput())
+    total_input_fields = forms.CharField(widget=forms.HiddenInput())
 
     def __init__(self, *args, **kwargs):
         extra_fields = kwargs.pop('extra', 0)
@@ -320,7 +320,7 @@ class UploadEmptyLayerForm(forms.Form):
             extra_fields = 0
 
         super(UploadEmptyLayerForm, self).__init__(*args, **kwargs)
-        self.fields['extra_field_count'].initial = extra_fields
+        self.fields['total_input_fields'].initial = extra_fields
         print extra_fields
 
         for index in range(int(extra_fields)):
