@@ -59,7 +59,7 @@ from geonode.base.models import TopicCategory
 from geonode.utils import default_map_config
 from geonode.utils import GXPLayer
 from geonode.utils import GXPMap
-from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file
+from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file, create_empty_layer
 from geonode.layers.utils import file_upload, is_raster, is_vector
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
@@ -891,10 +891,71 @@ def layer_create(request, template='layers/layer_create.html'):
 
             if form_empty_layer.is_valid():
 
-                data = form_empty_layer.cleaned_data
-                print "valid"
-                print data
+                field_types_info = {
+                    "Integer": "integer",
+                    "Character": "character varying(254)",
+                    "Double": "double precision"
+                }
 
+                create_empty_layer_data = form_empty_layer.cleaned_data
+                print create_empty_layer_data
+
+                table_name = create_empty_layer_data['empty_layer_name']
+                table_geom = create_empty_layer_data['geom_type']
+
+                table_fields_list = ['fid serial NOT NULL']
+
+                create_empty_layer_data_lngth = (len(create_empty_layer_data) - 3)/2  # need only field names and types divided by 2
+
+
+                for key in create_empty_layer_data:
+
+                    for i in range(create_empty_layer_data_lngth):
+                        if key.startswith("extra_field_%s" % i):
+
+                            field_name = create_empty_layer_data['extra_field_%s' % i]
+                            field_type_short = create_empty_layer_data['field_type_%s' % i] # get field type for this field name
+                            print field_type_short
+                            field_type = field_types_info[field_type_short] # build the complete field type
+
+                            field_name_type = field_name + " " + field_type
+                            table_fields_list.append(field_name_type)
+
+                geom = "geom geometry(%s,4326)" % table_geom
+                table_fields_list.append(geom)
+                primary_key = "CONSTRAINT %s_pkey PRIMARY KEY (fid)" % table_name
+                table_fields_list.append(primary_key)
+                table_fields_list = ','.join(map(str, table_fields_list))
+
+
+                try:
+
+                    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+                        'dbname': settings.DATABASES['uploaded']['NAME'],
+                        'user': settings.DATABASES['uploaded']['USER'],
+                        'host': settings.DATABASES['uploaded']['HOST'],
+                        'password': settings.DATABASES['uploaded']['PASSWORD']
+                    })
+                    conn = psycopg2.connect(constr)
+                    cur = conn.cursor()
+
+                    sqlstr = "CREATE TABLE {table_name} ({table_fields_list}) ".format(** {
+                        'table_name': table_name,
+                        'table_fields_list': table_fields_list
+                    })
+
+                    cur.execute(sqlstr)
+                    conn.commit()
+                except:
+                    print ("issue creating the table")
+
+                print sqlstr
+
+
+                _create_geoserver_geonode_layer(table_name)
+
+
+                create_empty_layer()
 
 
                 empty_layer_name = form_empty_layer.cleaned_data["empty_layer_name"]

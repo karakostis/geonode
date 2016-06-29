@@ -303,10 +303,12 @@ class UploadEmptyLayerForm(forms.Form):
     empty_layer_name = forms.CharField(max_length=255, required=True, label="Name of new Layer")
 
     GEOM_TYPE = (
-        ('POINT', 'Points'),
+        ('MULTIPOINT', 'Points'),
         ('MULTILINESTRING', 'Lines'),
         ('MULTIPOLYGON', 'Polygons')
     )
+
+
 
     geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
 
@@ -314,6 +316,13 @@ class UploadEmptyLayerForm(forms.Form):
     total_input_fields = forms.CharField(widget=forms.HiddenInput())
 
     def __init__(self, *args, **kwargs):
+
+        FIELD_TYPE = (
+            ('Integer', 'Integer'),
+            ('Double', 'Double'),
+            ('Character', 'Character')
+        )
+
         extra_fields = kwargs.pop('extra', 0)
 
         if not extra_fields:
@@ -326,3 +335,4 @@ class UploadEmptyLayerForm(forms.Form):
         for index in range(int(extra_fields)):
             # generate extra fields in the number specified via extra_fields
             self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(max_length=15)
+            self.fields['field_type_{index}'.format(index=index)] = forms.ChoiceField(choices=FIELD_TYPE)

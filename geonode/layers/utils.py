@@ -834,3 +834,6 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         status_code = 200
         errormsgs_val = ''
         return errormsgs_val, status_code
+
+def create_empty_layer():
+    print ("create an empty layer")
