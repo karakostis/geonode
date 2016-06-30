@@ -835,5 +835,44 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         errormsgs_val = ''
         return errormsgs_val, status_code
 
-def create_empty_layer():
-    print ("create an empty layer")
+def create_empty_layer(table_name, table_fields_list):
+
+    try:
+
+
+        constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+            'dbname': settings.DATABASES['uploaded']['NAME'],
+            'user': settings.DATABASES['uploaded']['USER'],
+            'host': settings.DATABASES['uploaded']['HOST'],
+            'password': settings.DATABASES['uploaded']['PASSWORD']
+        })
+        conn = psycopg2.connect(constr)
+        cur = conn.cursor()
+
+        sqlstr = "SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='{table_name}');".format(** {
+            'table_name': table_name
+        })
+        cur.execute(sqlstr)
+        exists = cur.fetchone()[0]
+        if exists:
+            errormsgs_val = "There is already a layer with this name. Please choose another name."
+            status_code = '400'
+            return errormsgs_val, status_code
+
+
+        sqlstr = "CREATE TABLE {table_name} ({table_fields_list}) ".format(** {
+            'table_name': table_name,
+            'table_fields_list': table_fields_list
+        })
+
+        cur.execute(sqlstr)
+        conn.commit()
+
+        status_code = 200
+        errormsgs_val = ''
+        return errormsgs_val, status_code
+    except:
+
+        status_code = 400
+        errormsgs_val = 'Failed to create table'
+        return errormsgs_val, status_code

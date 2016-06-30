@@ -334,5 +334,5 @@ class UploadEmptyLayerForm(forms.Form):
 
         for index in range(int(extra_fields)):
             # generate extra fields in the number specified via extra_fields
-            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(max_length=15)
+            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(min_length=3, max_length=15)
             self.fields['field_type_{index}'.format(index=index)] = forms.ChoiceField(choices=FIELD_TYPE)

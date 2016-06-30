@@ -19,6 +19,7 @@
 #########################################################################
 
 import os
+import re
 import sys
 import csv
 import logging
@@ -837,14 +838,15 @@ def layer_create(request, template='layers/layer_create.html'):
                     # Write CSV in the server
                     tempdir, absolute_base_file = form_csv_layer.write_files()
                     errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom)
-                    print status_code
+
                     if status_code == '400':
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
                         return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv')}))
 
                     #  create layer in geoserver
-                    _create_geoserver_geonode_layer(new_table)
+                    sld_style = 'polygon_style.sld'
+                    _create_geoserver_geonode_layer(new_table, sld_style)
 
                     ctx['success'] = True
 
@@ -881,10 +883,7 @@ def layer_create(request, template='layers/layer_create.html'):
         elif 'emptylayerbtn' in request.POST:
             ctx = {}
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
-            #  form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, extra=request.POST.get('total_input_fields'))
-            #form_empty_layer = UploadEmptyLayerForm(request.POST)
-
 
             errormsgs = []
             ctx['success'] = False
@@ -898,28 +897,70 @@ def layer_create(request, template='layers/layer_create.html'):
                 }
 
                 create_empty_layer_data = form_empty_layer.cleaned_data
-                print create_empty_layer_data
 
-                table_name = create_empty_layer_data['empty_layer_name']
+                table_name = (create_empty_layer_data['empty_layer_name'].lower()).replace(" ", "_")
+                # check table name for special characters
+                if not re.match("^[\w\d_]+$", table_name) or table_name[0].isdigit():
+                    status_code = '400'
+                    errormsgs_val = "Not valid name for layer name. Use only characters or numbers for a name. Name can not start with a number."
+                    errormsgs.append(errormsgs_val)
+                    ctx['errormsgs'] = errormsgs
+                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+
+
+
+
                 table_geom = create_empty_layer_data['geom_type']
 
                 table_fields_list = ['fid serial NOT NULL']
 
                 create_empty_layer_data_lngth = (len(create_empty_layer_data) - 3)/2  # need only field names and types divided by 2
 
+                # check if user has added at least one column
+                if (len(create_empty_layer_data) <= 3):
+                    status_code = '400'
+                    if status_code == '400':
+                        errormsgs_val = "You haven't added any additional columns. At least one column is required."
+                        errormsgs.append(errormsgs_val)
+                        ctx['errormsgs'] = errormsgs
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
 
+                field_types = []
                 for key in create_empty_layer_data:
-
                     for i in range(create_empty_layer_data_lngth):
                         if key.startswith("extra_field_%s" % i):
 
-                            field_name = create_empty_layer_data['extra_field_%s' % i]
+                            field_name = create_empty_layer_data['extra_field_%s' % i].replace(" ", "_")
+
+                            # check if string has special characters
+                            if not re.match("^[\w\d_]+$", field_name) or field_name[0].isdigit():
+                                status_code = '400'
+                                errormsgs_val = "Not valid naming for attributes. Use only characters or numbers for a name. Name can not start with a number."
+                                errormsgs.append(errormsgs_val)
+                                ctx['errormsgs'] = errormsgs
+                                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+
                             field_type_short = create_empty_layer_data['field_type_%s' % i] # get field type for this field name
-                            print field_type_short
+
                             field_type = field_types_info[field_type_short] # build the complete field type
 
                             field_name_type = field_name + " " + field_type
-                            table_fields_list.append(field_name_type)
+                            field_types.append(field_name)
+                            table_fields_list.append(field_name_type.lower())
+
+                print table_fields_list
+
+
+
+
+                # check if there are duplicate columns
+                if (len(field_types) != len(set(field_types))):
+                    status_code = '400'
+                    if status_code == '400':
+                        errormsgs_val = "There are one or more columns with the same name."
+                        errormsgs.append(errormsgs_val)
+                        ctx['errormsgs'] = errormsgs
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
 
                 geom = "geom geometry(%s,4326)" % table_geom
                 table_fields_list.append(geom)
@@ -928,46 +969,31 @@ def layer_create(request, template='layers/layer_create.html'):
                 table_fields_list = ','.join(map(str, table_fields_list))
 
 
-                try:
-
-                    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
-                        'dbname': settings.DATABASES['uploaded']['NAME'],
-                        'user': settings.DATABASES['uploaded']['USER'],
-                        'host': settings.DATABASES['uploaded']['HOST'],
-                        'password': settings.DATABASES['uploaded']['PASSWORD']
-                    })
-                    conn = psycopg2.connect(constr)
-                    cur = conn.cursor()
-
-                    sqlstr = "CREATE TABLE {table_name} ({table_fields_list}) ".format(** {
-                        'table_name': table_name,
-                        'table_fields_list': table_fields_list
-                    })
-
-                    cur.execute(sqlstr)
-                    conn.commit()
-                except:
-                    print ("issue creating the table")
-
-                print sqlstr
 
 
-                _create_geoserver_geonode_layer(table_name)
+                # create table in postgis for empty_layer
+                errormsgs_val, status_code = create_empty_layer(table_name, table_fields_list)
+
+                if status_code == '400':
+                    errormsgs.append(errormsgs_val)
+                    ctx['errormsgs'] = errormsgs
+                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
 
 
-                create_empty_layer()
+                available_sld_styles = {
+                    'MULTIPOINT': 'point_style.sld',
+                    'MULTILINESTRING': 'line_style.sld',
+                    'MULTIPOLYGON': 'polygon_style.sld',
+                }
+                sld_style = available_sld_styles[table_geom]
+                # create geoserver and geonode layer
+                _create_geoserver_geonode_layer(table_name, sld_style)
 
-
-                empty_layer_name = form_empty_layer.cleaned_data["empty_layer_name"]
-                #print empty_layer_name
-                total_input_fields = form_empty_layer.cleaned_data["total_input_fields"]
 
 
                 return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
 
             else:
-
-                print ("error")
 
                 for e in form_empty_layer.errors.values():
                     errormsgs.append([escape(v) for v in e])
@@ -975,13 +1001,11 @@ def layer_create(request, template='layers/layer_create.html'):
                 ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
-
-
                 return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
 
 
 
-def _create_geoserver_geonode_layer(new_table):
+def _create_geoserver_geonode_layer(new_table, sld_type):
     # Create the Layer in GeoServer from the table
 
     try:
@@ -998,8 +1022,9 @@ def _create_geoserver_geonode_layer(new_table):
     # Create the Layer in GeoNode from the GeoServer Layer
     try:
 
-        link_to_sld = "{location}styles/polygon_style.sld".format(** {
-            'location': settings.OGC_SERVER['default']['LOCATION']
+        link_to_sld = "{location}styles/{sld_type}".format(** {
+            'location': settings.OGC_SERVER['default']['LOCATION'],
+            'sld_type': sld_type
         })
 
         import requests
