@@ -855,7 +855,6 @@ def layer_create(request, template='layers/layer_create.html'):
                     ctx['errors'] = str(e)
 
                 finally:
-
                     if tempdir is not None:
                         shutil.rmtree(tempdir)
 
@@ -907,9 +906,6 @@ def layer_create(request, template='layers/layer_create.html'):
                     ctx['errormsgs'] = errormsgs
                     return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
 
-
-
-
                 table_geom = create_empty_layer_data['geom_type']
 
                 table_fields_list = ['fid serial NOT NULL']
@@ -948,11 +944,6 @@ def layer_create(request, template='layers/layer_create.html'):
                             field_types.append(field_name)
                             table_fields_list.append(field_name_type.lower())
 
-                print table_fields_list
-
-
-
-
                 # check if there are duplicate columns
                 if (len(field_types) != len(set(field_types))):
                     status_code = '400'
@@ -962,14 +953,11 @@ def layer_create(request, template='layers/layer_create.html'):
                         ctx['errormsgs'] = errormsgs
                         return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
 
-                geom = "geom geometry(%s,4326)" % table_geom
+                geom = "the_geom geometry(%s,4326)" % table_geom
                 table_fields_list.append(geom)
                 primary_key = "CONSTRAINT %s_pkey PRIMARY KEY (fid)" % table_name
                 table_fields_list.append(primary_key)
                 table_fields_list = ','.join(map(str, table_fields_list))
-
-
-
 
                 # create table in postgis for empty_layer
                 errormsgs_val, status_code = create_empty_layer(table_name, table_fields_list)
@@ -989,9 +977,17 @@ def layer_create(request, template='layers/layer_create.html'):
                 # create geoserver and geonode layer
                 _create_geoserver_geonode_layer(table_name, sld_style)
 
+                ctx['success'] = True
+                if ctx['success']:
+                    status_code = 200
+                    layer = 'geonode:' + table_name
 
-
-                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
+                    return HttpResponseRedirect(
+                        reverse(
+                            'layer_metadata',
+                            args=(
+                                layer,
+                            )))
 
             else:
 
@@ -1093,7 +1089,6 @@ def download_csv(request):
 
         cur.execute(sqlstr)
         rows = cur.fetchall()
-        print rows
 
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = "attachment; filename={file}".format(** {

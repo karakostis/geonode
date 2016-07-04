@@ -308,8 +308,6 @@ class UploadEmptyLayerForm(forms.Form):
         ('MULTIPOLYGON', 'Polygons')
     )
 
-
-
     geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
 
 
@@ -330,9 +328,8 @@ class UploadEmptyLayerForm(forms.Form):
 
         super(UploadEmptyLayerForm, self).__init__(*args, **kwargs)
         self.fields['total_input_fields'].initial = extra_fields
-        print extra_fields
 
         for index in range(int(extra_fields)):
             # generate extra fields in the number specified via extra_fields
-            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(min_length=3, max_length=15)
-            self.fields['field_type_{index}'.format(index=index)] = forms.ChoiceField(choices=FIELD_TYPE)
+            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(min_length=3, max_length=15, label="Attribute %s" % index)
+            self.fields['field_type_{index}'.format(index=index)] = forms.ChoiceField(choices=FIELD_TYPE, label="")

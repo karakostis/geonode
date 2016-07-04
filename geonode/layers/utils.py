@@ -839,7 +839,6 @@ def create_empty_layer(table_name, table_fields_list):
 
     try:
 
-
         constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
             'dbname': settings.DATABASES['uploaded']['NAME'],
             'user': settings.DATABASES['uploaded']['USER'],
@@ -859,10 +858,17 @@ def create_empty_layer(table_name, table_fields_list):
             status_code = '400'
             return errormsgs_val, status_code
 
-
         sqlstr = "CREATE TABLE {table_name} ({table_fields_list}) ".format(** {
             'table_name': table_name,
             'table_fields_list': table_fields_list
+        })
+
+        cur.execute(sqlstr)
+        conn.commit()
+
+        sqlstr = "CREATE INDEX indx_geom_{table_name} ON {table_name} USING GIST({geom});".format(** {
+            'table_name': table_name,
+            'geom': 'the_geom'
         })
 
         cur.execute(sqlstr)
