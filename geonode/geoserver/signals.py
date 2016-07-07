@@ -26,6 +26,7 @@ logger = logging.getLogger("geonode.geoserver.signals")
 
 
 def geoserver_pre_delete(instance, sender, **kwargs):
+
     """Removes the layer from GeoServer
     """
     # cascading_delete should only be called if
@@ -37,6 +38,7 @@ def geoserver_pre_delete(instance, sender, **kwargs):
 
 
 def geoserver_pre_save(instance, sender, **kwargs):
+
     """Send information to geoserver.
 
        The attributes sent include:

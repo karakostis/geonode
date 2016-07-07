@@ -20,12 +20,16 @@
 
 import os
 import sys
+import csv
 import logging
 import shutil
 import traceback
 import psycopg2
 from osgeo import ogr
+from unidecode import unidecode
+from owslib.wfs import WebFeatureService
 from guardian.shortcuts import get_perms
+from geoserver.catalog import Catalog
 
 
 from django.contrib import messages
@@ -51,16 +55,22 @@ from geonode.layers.models import Layer, Attribute, UploadSession
 from geonode.base.enumerations import CHARSETS
 from geonode.base.models import TopicCategory
 
+
 from geonode.utils import default_map_config
 from geonode.utils import GXPLayer
 from geonode.utils import GXPMap
+from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file
 from geonode.layers.utils import file_upload, is_raster, is_vector
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
+from geonode.layers.forms import UploadCSVForm
+
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
 from geonode.utils import build_social_links
-from geonode.geoserver.helpers import cascading_delete, gs_catalog
+from geonode.geoserver.helpers import gs_slurp
+from geonode.geoserver.signals import geoserver_post_save
+
 
 CONTEXT_LOG_FILE = None
 
@@ -123,14 +133,16 @@ def _resolve_layer(request, typename, permission='base.view_resourcebase',
 
 # Basic Layer Views #
 
-
 @login_required
 def layer_upload(request, template='upload/layer_upload.html'):
+
     if request.method == 'GET':
+
         ctx = {
             'charsets': CHARSETS,
             'is_layer': True,
         }
+
         #category_form = CategoryForm(prefix="category_choice_field", initial=None)
         #return render_to_response(template, {"category_form": category_form}, RequestContext(request, ctx))
         return render_to_response(template, RequestContext(request, ctx))
@@ -141,6 +153,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
         out = {'success': False}
         if form.is_valid():
             title = form.cleaned_data["layer_title"]
+
             # Replace dots in filename - GeoServer REST API upload bug
             # and avoid any other invalid characters.
             # Use the title if possible, otherwise default to the filename
@@ -150,6 +163,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 name_base, __ = os.path.splitext(
                     form.cleaned_data["base_file"].name)
             name = slugify(name_base.replace(".", "_"))
+
             try:
                 # Moved this inside the try/except block because it can raise
                 # exceptions when unicode characters are present.
@@ -217,6 +231,8 @@ def layer_upload(request, template='upload/layer_upload.html'):
             status=status_code)
 
 
+
+
 def layer_detail(request, layername, template='layers/layer_detail.html'):
     layer = _resolve_layer(
         request,
@@ -233,7 +249,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
     config["bbox"] = bbox if config["srs"] != 'EPSG:900913' \
         else llbbox_to_mercator([float(coord) for coord in bbox])
-    config["title"] = layer.title
+    config["title"] = 'layer.title'
     config["queryable"] = True
 
     if layer.storeType == "remoteStore":
@@ -297,6 +313,77 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
     if settings.SOCIAL_ORIGINS:
         context_dict["social_links"] = build_social_links(request, layer)
+
+    layers_names = layer.typename
+    workspace, name = layers_names.split(':')
+
+    location = "{location}{service}".format(** {
+        'location': settings.OGC_SERVER['default']['LOCATION'],
+        'service': 'wms',
+    })
+
+    try:
+
+        # get type of layer (raster or vector)
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+        resource = cat.get_resource(name, workspace=workspace)
+        if (type(resource).__name__ == 'Coverage'):
+            context_dict["layer_type"] = "raster"
+        elif (type(resource).__name__ == 'FeatureType'):
+            context_dict["layer_type"] = "vector"
+
+            # get layer's attributes with display_order gt 0
+            attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+            layers_attributes = []
+            for values in attr_to_display.values('attribute'):
+                layers_attributes.append(values['attribute'])
+
+            # get schema for specific layer
+            wfs = WebFeatureService(location, version='1.1.0')
+            schema = wfs.get_schema(name)
+
+            if 'the_geom' in schema['properties']:
+                schema['properties'].pop('the_geom', None)
+            elif 'geom' in schema['properties']:
+                schema['properties'].pop("geom", None)
+
+            # filter the schema dict based on the values of layers_attributes
+            layer_attributes_schema = []
+            for key in schema['properties'].keys():
+                if key in layers_attributes:
+                    layer_attributes_schema.append(key)
+                else:
+                    schema['properties'].pop(key, None)
+
+            filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
+
+            context_dict["schema"] = schema
+            response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
+
+            features_response = json.dumps(json.loads(response.read()))
+            decoded = json.loads(features_response)
+            decoded_features = decoded['features']
+
+            properties = {}
+            for key in decoded_features[0]['properties']:
+                properties[key] = []
+
+            # loop the dictionary based on the values on the list and add the properties
+            # in the dictionary (if doesn't exist) together with the value
+
+            for i in range(len(decoded_features)):
+                for key, value in decoded_features[i]['properties'].iteritems():
+                    if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
+                        properties[key].append(value)
+
+            for key in properties:
+                properties[key].sort()
+
+            context_dict["feature_properties"] = json.dumps(properties)
+
+            print "OWSLib worked as expected"
+    except:
+        print "Possible error with OWSLib. Turning all available properties to string"
 
     return render_to_response(template, RequestContext(request, context_dict))
 
@@ -647,3 +734,244 @@ def layer_thumbnail(request, layername):
                 status=500,
                 mimetype='text/plain'
             )
+
+
+
+@login_required
+def layer_create(request, template='layers/layer_create.html'):
+
+    if request.method == 'GET':
+        ctx = {
+            'charsets': CHARSETS,
+        }
+
+        # Get the values for the dropdown menus of regions and provinces
+        constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+            'dbname': settings.DATABASES['uploaded']['NAME'],
+            'user': settings.DATABASES['uploaded']['USER'],
+            'host': settings.DATABASES['uploaded']['HOST'],
+            'password': settings.DATABASES['uploaded']['PASSWORD']
+        })
+
+        conn = psycopg2.connect(constr)
+        cur = conn.cursor()
+
+        sqlstr = "SELECT DISTINCT adm0_name FROM wld_bnd_adm0_gaul_2015 ORDER BY adm0_name;"
+        cur.execute(sqlstr)
+        countries = cur.fetchall()
+        countries = [c[0] for c in countries]
+        ctx['countries'] = countries
+
+        form = UploadCSVForm()
+        ctx['form'] = form
+        return render_to_response(template, RequestContext(request, ctx))
+
+    elif request.method == 'POST':
+
+        # Get the values for the dropdown menus of regions and provinces
+        ctx = {}
+        constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+            'dbname': settings.DATABASES['uploaded']['NAME'],
+            'user': settings.DATABASES['uploaded']['USER'],
+            'host': settings.DATABASES['uploaded']['HOST'],
+            'password': settings.DATABASES['uploaded']['PASSWORD']
+        })
+
+        conn = psycopg2.connect(constr)
+        cur = conn.cursor()
+
+        sqlstr = "SELECT DISTINCT adm0_name FROM wld_bnd_adm0_gaul_2015 ORDER BY adm0_name;"
+        cur.execute(sqlstr)
+        countries = cur.fetchall()
+        countries = [c[0] for c in countries]
+        ctx['countries'] = countries
+
+        form = UploadCSVForm(request.POST, request.FILES)
+        errormsgs = []
+        ctx['success'] = False
+
+        if form.is_valid():
+            try:
+                title = form.cleaned_data["title"]
+
+                layer_based_info = {
+                    "1": {
+                        "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
+                        "id": "adm0_code",
+                        "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
+                        "geom": "wkb_geometry"
+                        },
+                    "2": {
+                        "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
+                        "id": "adm1_code",
+                        "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
+                        "geom": "geom"
+                        },
+                    "3": {
+                        "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
+                        "id": "adm2_code",
+                        "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
+                        "geom": "geom"
+                        }
+                }
+
+                layer_type = form.cleaned_data["layer_type"]
+
+                geom_table_name = layer_based_info[layer_type[0]]['geom_table']
+                geom_table_id = layer_based_info[layer_type[0]]['id']
+                geom_table_geom = layer_based_info[layer_type[0]]['geom']
+                geom_table_columns = layer_based_info[layer_type[0]]['columns']
+                selected_country = form.cleaned_data["selected_country"]
+                cntr_name = slugify(selected_country[0].replace(" ", "_"))
+                table_name_temp = "%s_%s_temp" % (cntr_name, title)
+                table_name = "%s_%s" % (cntr_name, title)
+                table_name_temp = table_name_temp
+                new_table = table_name
+
+                # Write CSV in the server
+                tempdir, absolute_base_file = form.write_files()
+                errormsgs_val, status_code = process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom)
+                print status_code
+                if status_code == '400':
+                    errormsgs.append(errormsgs_val)
+                    ctx['errormsgs'] = errormsgs
+                    return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries, 'errormsgs': errormsgs}))
+
+                #  create layer in geoserver
+                _create_geoserver_geonode_layer(new_table)
+
+                ctx['success'] = True
+
+            except Exception as e:
+                ctx['success'] = False
+                ctx['errors'] = str(e)
+
+            finally:
+
+                if tempdir is not None:
+                    shutil.rmtree(tempdir)
+
+            if ctx['success']:
+                status_code = 200
+                layer = 'geonode:' + new_table
+
+                return HttpResponseRedirect(
+                    reverse(
+                        'layer_metadata',
+                        args=(
+                            layer,
+                        )))
+        else:
+
+            for e in form.errors.values():
+                errormsgs.append([escape(v) for v in e])
+
+            ctx['errors'] = form.errors
+            ctx['errormsgs'] = errormsgs
+            ctx['success'] = False
+            return render_to_response(template, RequestContext(request, {'form': form, 'countries': countries}))
+
+
+def _create_geoserver_geonode_layer(new_table):
+    # Create the Layer in GeoServer from the table
+
+    try:
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+        ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
+        cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
+
+    except Exception as e:
+
+        msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
+        print msg
+        return None, msg
+
+    # Create the Layer in GeoNode from the GeoServer Layer
+    try:
+
+        link_to_sld = "{location}styles/polygon_style.sld".format(** {
+            'location': settings.OGC_SERVER['default']['LOCATION']
+        })
+
+        import requests
+        r = requests.get(link_to_sld)
+        sld_polygon = r.text
+        cat.create_style(new_table, sld_polygon, overwrite=True)
+        style = cat.get_style(new_table)
+        layer = cat.get_layer(new_table)
+        layer.default_style = style
+        cat.save(layer)
+
+        gs_slurp(filter=new_table)
+        from geonode.base.models import ResourceBase
+        layer = ResourceBase.objects.get(title=new_table)
+        geoserver_post_save(layer, ResourceBase)
+
+    except Exception as e:
+        msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))
+        return None, msg
+
+@login_required
+def download_csv(request):
+
+    if request.method == 'GET':
+        corresponding_data = {
+            "country": {
+                "columns": "adm0_code,adm0_name",
+                "table_name": "wld_bnd_adm0_gaul_2015"
+            },
+            "region": {
+                "columns": "adm1_code,adm1_name",
+                "table_name": "wld_bnd_adm1_gaul_2015",
+                "column_1": "adm0_name"
+            },
+            "province": {
+                "columns": "adm2_code,adm2_name",
+                "table_name": "wld_bnd_adm2_gaul_2015",
+                "column_1": "adm0_name"
+            }
+        }
+        country = request.GET.get('country')
+        btn = request.GET.get('btn')
+
+        constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+            'dbname': settings.DATABASES['uploaded']['NAME'],
+            'user': settings.DATABASES['uploaded']['USER'],
+            'host': settings.DATABASES['uploaded']['HOST'],
+            'password': settings.DATABASES['uploaded']['PASSWORD']
+        })
+
+        conn = psycopg2.connect(constr)
+        cur = conn.cursor()
+
+        if (btn == "country"):
+            sqlstr = "SELECT {columns} FROM {table} ORDER BY 2".format(** {
+                'columns': corresponding_data[btn]["columns"],
+                'table': corresponding_data[btn]["table_name"]
+            })
+        else:
+            sqlstr = "SELECT {columns} FROM {table} WHERE {column_1} = '{country}' ORDER BY 2".format(** {
+                'columns': corresponding_data[btn]["columns"],
+                'country': country,
+                'table': corresponding_data[btn]["table_name"],
+                'column_1': corresponding_data[btn]["column_1"],
+            })
+
+        cur.execute(sqlstr)
+        rows = cur.fetchall()
+        print rows
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = "attachment; filename={file}".format(** {
+            'file': corresponding_data[btn]["table_name"] + ".csv"
+        })
+
+        writer = csv.writer(response, dialect='excel')
+        writer.writerow(tuple(corresponding_data[btn]["columns"].split(',')))
+
+        for row in rows:
+            field_1 = row[0]
+            field_2 = unidecode(row[1]).encode(encoding='UTF-8')
+            fields = [field_1, field_2]
+            writer.writerows([fields])
+        return response

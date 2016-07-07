@@ -7,23 +7,16 @@
 {% load base_tags %}
 {% load guardian_tags %}
 
+
 {% block title %}{{ resource.title|default:resource.typename }} — {{ block.super }}{% endblock %}
 
 {% block head %}
-
-  {% if TWITTER_CARD %}
-    {% include "base/_resourcebase_twittercard.html" %}
-  {% endif %}
-
-  {% if OPENGRAPH_ENABLED %}
-    {% include "base/_resourcebase_opengraph.html" %}
-  {% endif %}
-
-  {% if preview == 'geoext' %}
-    {% include "layers/layer_geoext_map.html" %}
-  {% else %}
-    {% include "layers/layer_leaflet_map.html" %}
-  {% endif %}
+{% if preview == 'geoext' %}
+  {% include "layers/layer_geoext_map.html" %}
+{% else %}
+  {% include "layers/layer_leaflet_map.html" %}
+{% endif %}
+{% include "layers/layer_leaflet_modal_map.html" %}
 {{ block.super }}
 {% endblock %}
 
@@ -138,6 +131,8 @@
 
     <ul class="list-group">
       {% if resource.storeType != "remoteStore" %}
+        {% get_obj_perms request.user for resource.get_self_resource as "perms" %}
+
         <li class="list-group-item">
         {% if links %}
            <button class="btn btn-primary btn-md btn-block" data-toggle="modal" data-target="#download-layer">{% trans "Download Layer" %}</button>
@@ -148,7 +143,6 @@
         {% endif %}
         </li>
       {% endif %}
-    </ul>
     <div class="modal fade" id="download-layer" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -156,14 +150,107 @@
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
             <h4 class="modal-title" id="myModalLabel">{% trans "Download Layer" %}</h4>
           </div>
+
+
           <div class="modal-body">
+            <button type="button" id = "button-toggle" class="btn btn-primary btn-circle" data-toggle="button">
+                Layer Filtering
+            </button>
+          </br></br>
+
+          <ul class="nav nav-tabs" id="tabContent" style="display: none;">
+              <li class="active"><a href="#query_builder" data-toggle="tab">Query Builder</a></li>
+              <li><a href="#map" data-toggle="tab">Map Filter</a></li>
+          </ul>
+          </br>
+
+            <div class="tab-content" style="display: none;">  <!--  added now-->
+                <div id="query_builder" class="tab-pane fade in active">
+                    <div class="form-inline" style=" display: inline-table; vertical-align: middle; width: auto;  ">
+                        Match
+                        <div class="input-group" style=" display: inline-table; vertical-align: middle; width: auto;  ">
+                            <div class="input-group-btn" id="drop_operator_list">
+                               <div class="btn-group btn-group-xs">
+                                   <div class="dropdown">
+                                       <button class="btn btn-primary btn-xs dropdown-toggle" id="modal-button-and-or" type="button" data-toggle="dropdown" data-target="#" value="AND">
+                                       <span class="caret"></span></button>
+                                        <ul class="dropdown-menu dropdown-menu-and-or" id="and-or" style="height: auto; max-height: 200px; overflow-x: hidden;">
+                                           <li><a href="#" id="AND">all</a></li>
+                                           <li><a href="#" id="OR">any</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         of the following:
+                    </div>
+                    </br></br>
+                    <div class="input-group" id = "query-filter-tools">
+                        <div class="input-group-btn">
+                            <div class="btn-group btn-group-sm">
+                                <div class="dropdown">
+                                  <button class="btn btn-primary dropdown-toggle" id="modal-button-attributes" type="button" data-toggle="dropdown" data-target="#">Attribute
+                                      <span class="caret"></span></button>
+                                      <ul class="dropdown-menu dropdown-menu-attributes" id="attribute_list" style="height: auto; max-height: 200px; overflow-x: hidden;">
+                                          {% if schema %}
+                                              {% for key, values in schema.properties.items %}
+                                                    <li><a href="#" id= {{ key }} data-type= {{ values }} data-schema= 'yes'>{{ key | capfirst }}</a></li>
+                                              {% endfor %}
+                                          {% else %}
+                                              {% for attribute in resource.attributes %}
+                                                    <li><a href="#" id= {{ attribute }} data-type= 'string' data-schema= 'no'> {{ attribute | capfirst }} </a></li>
+                                              {% endfor %}
+                                          {% endif %}
+                                      </ul>
+                                </div>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <div class="dropdown">
+                                  <button class="btn btn-primary dropdown-toggle" id="modal-button-operators" type="button" data-toggle="dropdown" data-target="#">Operator
+                                      <span class="caret"></span></button>
+                                      <ul class="dropdown-menu dropdown-menu-operators" id="operator_list" style="height: auto; max-height: 200px; overflow-x: hidden;">
+            	                         <li><a href="#" id="=">=</a></li>
+                                         <li><a href="#" id="&lt;&gt;">&lt;&gt;</a></li>
+                                         <li><a href="#" id="&gt;">&gt;</a></li>
+                                         <li><a href="#" id="&lt;">&lt;</a></li>
+                                         <li><a href="#" id="&gt;=">&gt;=</a></li>
+                                         <li><a href="#" id="&lt;=">&lt;=</a></li>
+                                         <li role="separator" class="divider"></li>
+                                         <li><a href="#" id=" LIKE ">LIKE</a></li>
+                                      </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control" id="single_value" placeholder="" data-toggle="tooltip" title="">
+                        <div class="input-group-btn" id="button_query">
+                            <a href="#" id="query_part" class="btn btn-primary btn-mg" data-toggle="modal" data-target="#myModal" title=""><span class="glyphicon glyphicon-plus"></span></a>
+                        </div>
+                    </div>
+                    </br>
+                    <div class="text_area" style="visibility:hidden;">
+                        <div class="form-group" id="added_rules"></div>
+                        <div>
+                            <p id="whole_query"> </p>
+                        </div>
+                    </div>
+                </div>
+                <div id="map" class="tab-pane fade">
+                    <div id="embedded_map_modal">
+                      <div id="preview_map_modal"></div>
+                    </div>
+                </div>
+                </br>
+            </div>
+
             {% if links %}
             <ul>
               {% for link in links %}
-              <li><a href="{{ link.url }}">{% trans link.name %}</a></li>
+              <li><a href="{{ link.url }}" id="{{ link.name | slugify }}" class="urls">'{% trans link.name %}'</a></li>
+
               {% endfor %}
             </ul>
             {% endif %}
+
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">{% trans "Close" %}</button>
@@ -175,8 +262,8 @@
     {% if GEOSERVER_BASE_URL %}
       {% get_obj_perms request.user for resource.layer as "layer_perms" %}
     {% endif %}
-    {% if "change_resourcebase_metadata" in perms_list or "change_resourcebase" in perms_list or "delete_resourcebase" in perms_list or "change_layer_style" in layer_perms %}
-    <li class="list-group-item"> 
+    {% if "change_resourcebase_metadata" in perms or "change_resourcebase" in perms or "delete_resourcebase" in perms or "change_layer_style" in layer_perms %}
+    <li class="list-group-item">
       <button class="btn btn-primary btn-md btn-block" data-toggle="modal" data-target="#edit-layer">{% trans "Edit Layer" %}</button>
     </li>
     <div class="modal fade" id="edit-layer" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
@@ -188,7 +275,7 @@
           </div>
           <div class="modal-body">
             <div class="row edit-modal">
-              {% if "change_resourcebase_metadata" in perms_list %}
+              {% if "change_resourcebase_metadata" in perms %}
               <div class="col-sm-3">
                 <i class="fa fa-list-alt fa-3x"></i>
                 <h4>{% trans "Metadata" %}</h4>
@@ -203,28 +290,27 @@
                   {% if preview == 'geoext' %}
                   <a class="btn btn-default btn-block btn-xs style-edit" data-dismiss="modal" href="#">{% trans "Edit" %}</a>
                   {% endif %}
-                  <a class="btn btn-default btn-block btn-xs" href="{% url "layer_style_manage" resource.service_typename %}">{% trans "Manage" %}</a>
                 </div>
                 {% endif %}
               {% endif %}
-              {% if "change_resourcebase" in perms_list %}
+              {% if "change_resourcebase" in perms %}
               <div class="col-sm-3">
                 <i class="fa fa-photo fa-3x"></i>
                 <h4>{% trans "Thumbnail" %}</h4>
                 <a class="btn btn-default btn-block btn-xs" href="#" id="set_thumbnail">{% trans "Set" %}</a>
               </div>
               {% endif %}
-              {% if "change_resourcebase" in perms_list or "delete_resourcebase" in perms_list or "change_layer_data" in layer_perms %}
+              {% if "change_resourcebase" in perms or "delete_resourcebase" in perms or "change_layer_data" in layer_perms %}
               <div class="col-sm-3">
                 <i class="fa fa-square-o fa-3x rotate-45"></i>
                 <h4>{% trans "Layer" %}</h4>
-                {% if "change_resourcebase" in perms_list and not resource.service %}
+                {% if "change_resourcebase" in perms and not resource.service %}
                 <a class="btn btn-default btn-block btn-xs" href="{% url "layer_replace" resource.service_typename %}">{% trans "Replace" %}</a>
                 {% endif %}
                 {% if resource.storeType == 'dataStore' and "change_layer_data" in layer_perms %}
                 <a class="btn btn-default btn-block btn-xs" href="{% url "new_map" %}?layer={{resource.service_typename}}">{% trans "Edit data" %}</a>
                 {% endif %}
-                {% if "delete_resourcebase" in perms_list %}
+                {% if "delete_resourcebase" in perms %}
                 <a class="btn btn-danger btn-block btn-xs" href="{% url "layer_remove" resource.service_typename %}">{% trans "Remove" %}</a>
                 {% endif %}
               </div>
@@ -281,7 +367,7 @@
         <p>{% trans "List of maps using this layer:" %}</p>
         {% endif %}
         <ul class="list-unstyled">
-          {% for maplayer in resource.maps %} 
+          {% for maplayer in resource.maps %}
             <li><a href="{{ maplayer.map.get_absolute_url }}">{{ maplayer.map.title }}</a></li>
           {% empty %}
             <li>{% trans "This layer is not currently used in any maps." %}</li>
@@ -299,7 +385,7 @@
       <h4>{% trans "Documents related to this layer" %}</h4>
       <p>{% trans "List of documents related to this layer:" %}</p>
       <ul class="list-unstyled">
-        {% for document in documents %} 
+        {% for document in documents %}
           <li><a href="{{ document.get_absolute_url }}">{{ document.title }}</a></li>
         {% endfor %}
       </ul>
@@ -329,7 +415,7 @@
     {% endif %}
 
     {% if GEONODE_SECURITY_ENABLED %}
-    {% if "change_resourcebase_permissions" in perms_list %}
+    {% if "change_resourcebase_permissions" in perms %}
     <li class="list-group-item">
       <h4>{% trans "Permissions" %}</h4>
       <p>{% trans "Click the button below to change the permissions of this layer." %}</p>
@@ -346,11 +432,11 @@
     </li>
     {% endif %}
 
-    {% include "base/_resourcebase_contact_snippet.html" %}  
+    {% include "base/_resourcebase_contact_snippet.html" %}
   </ul>
 
 
-  {% if GEONODE_SECURITY_ENABLED %}   
+  {% if GEONODE_SECURITY_ENABLED %}
     {% include "_permissions_form.html" %}
   {% endif %}
 
@@ -373,6 +459,7 @@
     {% endif %}
     {% include 'rating.html' %}
     {% include 'request_download.html' %}
+
     <script type="text/javascript">
        $("#comment_submit_btn").click(function(event) {
             $.ajax({
@@ -381,7 +468,7 @@
               data: $("#form_post_comment").serialize(),
               success: function() {
                 $('#form_post_comment_div').modal('hide');
-                $('#comments_section').load(window.location.pathname + ' #comments_section', 
+                $('#comments_section').load(window.location.pathname + ' #comments_section',
                 		function(){$(this).children().unwrap()})
               }
             });
@@ -411,6 +498,179 @@
         $('#edit-layer').modal('toggle');
       });
     </script>
+
+
+    <script type="text/javascript">
+
+        // set default values for the logical operator list
+        $("#modal-button-and-or:first-child").text($("#AND").text());
+        $("#modal-button-attributes:first-child").val($("#AND").text());
+        $("#and-or li:not(.divider)").addClass('selected');
+        // on dropdown change, change the value of dropdown
+        $(".dropdown-menu-attributes li a").click(function(){
+            $("#modal-button-attributes:first-child").text($(this).text());
+            $("#modal-button-attributes:first-child").val($(this).text());
+        });
+        // on dropdown change, change the value of dropdown
+        $(".dropdown-menu-operators li a").click(function(){
+            $("#modal-button-operators:first-child").text($(this).text());
+            $("#modal-button-operators:first-child").val($(this).text());
+        });
+
+        // on dropdown change, change the value of dropdown
+        $(".dropdown-menu-and-or li a").click(function(){
+            $("#modal-button-and-or:first-child").text($(this).text());
+            $("#modal-button-and-or:first-child").val($(this).text());
+        });
+
+        // delete content from modal on close
+        $('#download-layer').on('hidden.bs.modal', function () {
+            $(this).find("input,textarea,select").val('').end();
+            if ($('#modal-button-and-or').is('.disabled')) {
+                $("#modal-button-and-or").removeClass( "disabled" );
+            }
+            $('.user-input-filters').remove();
+        });
+
+        // on first click create an array & save initial URLs
+        $("#button-toggle").one( "click", function() {
+            query=[];
+            kml_url = $("#kml").attr("href");
+            json_url = $("#geojson").attr("href");
+            excel_url = $("#excel").attr("href");
+            csv_url = $("#csv").attr("href");
+            shape_url = $("#zipped-shapefile").attr("href");
+            all_urls = {'kml' : kml_url, 'geojson' : json_url, 'excel' : excel_url, 'csv' : csv_url, 'zipped-shapefile' : shape_url};
+        });
+
+        // add class selected when an element from the list is clicked.
+        // Used later to recognize if button was pressed
+        $("#operator_list li:not(.divider)").click(function(){
+            // Ensure only the current one is selected
+            $("#operator_list li:not(.divider)").removeClass('selected');
+            $(this).addClass('selected');
+        });
+        $("#attribute_list li:not(.divider)").click(function(){
+            // Ensure only the current one is selected
+            $("#attribute_list li:not(.divider)").removeClass('selected');
+            $(this).addClass('selected');
+        });
+        $("#and-or li:not(.divider)").click(function(){
+            // Ensure only the current one is selected
+            $("#and-or li:not(.divider)").removeClass('selected');
+            $(this).addClass('selected');
+        });
+
+        // on button click, add value from textarea in array
+        $(document.body).on("click", "#button_query",function(e) {
+            $(".text_area").css("visibility", "visible");
+            attribute_list = $("#attribute_list li.selected a").attr('id');
+            operator_list = $("#operator_list li.selected a").attr('id');
+            single_value_input = ($("#single_value").val()).trim();
+            logical_operator_dropdown = $("#and-or li.selected a").attr('id');
+            attribute_data_type = $("#attribute_list li.selected a").attr('data-type'); // get the type of variable.
+            attribute_data_schema = $("#attribute_list li.selected a").attr('data-schema');
+
+            if(attribute_list == null || operator_list == null || single_value_input == "" ||  logical_operator_dropdown == null) {
+                if($("#missing-values").length == 0) {
+                    $( "#query-filter-tools" ).after( "<p id='missing-values'> Select all values from menus.</p>" );
+                }
+                $('#missing-values').css({ "color": "#bd362f", "font-style": "italic"  });
+
+            } else {
+                if($("#missing-values").length !== 0) {
+                    $( "p" ).remove( "#missing-values" );
+                }
+                // validation that user enters a string for a string attribute or a number for a number attribute
+                if (attribute_data_schema == 'yes' && attribute_data_type == 'string' && !isNaN(single_value_input) ){
+                      $('#single_value').css('background-color' , '#f26161');
+                      $('#single_value').val("");
+                      $('#single_value').attr("placeholder", "You entered a number. Not a string.");
+                } else if (attribute_data_schema == 'yes' && attribute_data_type !== 'string' && isNaN(single_value_input)){
+                    $('#single_value').css('background-color' , '#f26161');
+                    $('#single_value').val("");
+                    $('#single_value').attr("placeholder", "You entered a string. Not a number.");
+                } else {
+                    $('#single_value').css('background-color' , '#ffffff');
+                    $('#single_value').attr("placeholder", "");
+
+                    // control of single_value_input; string or number
+                    if (isNaN(single_value_input)){
+                        // if not a number then check if the operator type
+                        if (operator_list == "=" || operator_list == "<>" || operator_list == ">" || operator_list == "<" || operator_list == ">=" || operator_list == "<=" ){
+                            single_value_input = "'" + single_value_input + "'";
+                        } else if (operator_list == " LIKE ") {
+                            single_value_input = "'%25" + single_value_input + "%25'";
+                        }
+                    }
+
+                    input = attribute_list + operator_list + single_value_input;
+                    input_id = attribute_list + single_value_input;
+
+                    // create input text area with id of the single value
+                    $("#added_rules").append( '<div class="input-group user-input-filters"><div class="input-group-btn" id="erase_query"><a href="#"  class="btn btn-primary btn-mg" data-toggle="modal" data-target="#myModal" title="" ><span class="glyphicon glyphicon-minus"></span></a></div><input type="text" class="form-control" id="' + input_id + '" placeholder="" data-toggle="tooltip" title="" value="' + input + '"readonly></br></div>');
+
+                    // push data to array
+                    if (input != ''){
+                        query.push(input);
+                    }
+                }
+            }
+        });
+
+        // remove div element on button click
+        $("div").on("click","#erase_query",function(){
+            // remove value from array
+            value_to_be_removed = $(this).siblings('input').val();
+            var index = query.indexOf(value_to_be_removed);
+            query.splice(index, 1);
+            $(this).parent().remove();
+        });
+
+        // on url click append the array values in the existing href
+        $(document.body).on("click", ".urls",function(e) {
+
+            // get the href value of tab
+            var tab = $('#tabContent .active > a').attr('href')
+            if(tab == '#query_builder'){
+                // get the value of dropdown menu
+                logical_operator = $("#and-or li.selected a").attr('id');
+                // get the array, join it, add necessary values and add it in the UI
+                if (typeof query !== 'undefined') {
+                    joined_query = query.join(" " + logical_operator + " ");
+                    cql_filters = joined_query;
+                } else{
+                    cql_filters = '';
+                }
+                complete_cql = '&CQL_FILTER=(' + cql_filters + ')';
+                idValue = $(this).attr("id");
+                url_main = all_urls[idValue]
+                if(cql_filters.length >1) {
+                    addressValue = url_main + complete_cql
+                    $("#"+idValue).attr("href", addressValue)
+                } else{
+                    addressValue = url_main
+                    $("#"+idValue).attr("href", addressValue)
+                }
+            }
+        });
+
+        $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+        // change color of toggle button on click
+        $("#button-toggle").click(function() {
+            $(this).toggleClass("clicked");
+            if ($("#button-toggle").hasClass("clicked")) {
+                $("#button-toggle").css({ "background-color": "#3276b1", "border-color": "#3276b1"  });
+                $('#tabContent').show();
+                $('.tab-content').show();
+            } else {
+                $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+                $('#tabContent').hide();
+                $('.tab-content').hide();
+            }
+        });
+    </script>
+
     {% if GEONODE_SECURITY_ENABLED %}
     {% include "_permissions_form_js.html" %}
     {% endif %}
