@@ -694,7 +694,7 @@ def layer_remove(request, layername, template='layers/layer_remove.html'):
         layername,
         'base.delete_resourcebase',
         _PERMISSION_MSG_DELETE)
-
+    print layer
     if (request.method == 'GET'):
         return render_to_response(template, RequestContext(request, {
             "layer": layer
