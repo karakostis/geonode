@@ -61,7 +61,6 @@ from geonode.utils import default_map_config
 from geonode.utils import GXPLayer
 from geonode.utils import GXPMap
 from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file, create_empty_layer
-from geonode.layers.utils import file_upload, is_raster, is_vector
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
 from geonode.layers.forms import UploadCSVForm, UploadEmptyLayerForm
@@ -250,7 +249,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
     config["bbox"] = bbox if config["srs"] != 'EPSG:900913' \
         else llbbox_to_mercator([float(coord) for coord in bbox])
-    config["title"] = 'layer.title'
+    config["title"] = layer.title
     config["queryable"] = True
 
     if layer.storeType == "remoteStore":

@@ -37,7 +37,6 @@ from osgeo import gdal
 from django.contrib.auth import get_user_model
 from django.template.defaultfilters import slugify
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import signals
 from django.core.files import File
 from django.conf import settings
 from django.db.models import Q
