@@ -290,10 +290,46 @@ class UploadCSVForm(forms.Form):
         csv_file = self.cleaned_data.get('csv')
         if not csv_file:
             raise forms.ValidationError(_("Please select a CSV file."))
-
         else:
             csv_file_type = str(csv_file).split('.')
             if csv_file_type[1] not in ['csv','CSV']:
                 print csv_file_type[1]
                 raise forms.ValidationError(_("This is not a supported format. Please upload a CSV file."))
         return cleaned_data
+
+
+class UploadEmptyLayerForm(forms.Form):
+
+    empty_layer_name = forms.CharField(max_length=255, required=True, label="Name of new Layer")
+
+    GEOM_TYPE = (
+        ('MULTIPOINT', 'Points'),
+        ('MULTILINESTRING', 'Lines'),
+        ('MULTIPOLYGON', 'Polygons')
+    )
+
+    geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
+
+
+    total_input_fields = forms.CharField(widget=forms.HiddenInput())
+
+    def __init__(self, *args, **kwargs):
+
+        FIELD_TYPE = (
+            ('Integer', 'Integer'),
+            ('Double', 'Double'),
+            ('Character', 'Character')
+        )
+
+        extra_fields = kwargs.pop('extra', 0)
+
+        if not extra_fields:
+            extra_fields = 0
+
+        super(UploadEmptyLayerForm, self).__init__(*args, **kwargs)
+        self.fields['total_input_fields'].initial = extra_fields
+
+        for index in range(int(extra_fields)):
+            # generate extra fields in the number specified via extra_fields
+            self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(min_length=3, max_length=15, label="Attribute %s" % index)
+            self.fields['field_type_{index}'.format(index=index)] = forms.ChoiceField(choices=FIELD_TYPE, label="")
