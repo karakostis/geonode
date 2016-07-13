@@ -25,6 +25,7 @@ import csv
 import logging
 import shutil
 import traceback
+import requests
 import psycopg2
 from osgeo import ogr
 from unidecode import unidecode
@@ -39,9 +40,11 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.conf import settings
-from django.template import RequestContext
+from django.template import Context, RequestContext
+from django.template.loader import get_template
 from django.utils.translation import ugettext as _
 from django.utils import simplejson as json
+from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from django.template.defaultfilters import slugify
 from django.forms.models import inlineformset_factory
@@ -431,6 +434,7 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
 
     if request.method == "POST" and layer_form.is_valid(
     ) and attribute_form.is_valid() and category_form.is_valid():
+
         new_poc = layer_form.cleaned_data['poc']
         new_author = layer_form.cleaned_data['metadata_author']
         new_keywords = layer_form.cleaned_data['keywords']
@@ -483,6 +487,7 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
             layer.keywords.clear()
             layer.keywords.add(*new_keywords)
             the_layer = layer_form.save()
+
             up_sessions = UploadSession.objects.filter(layer=the_layer.id)
             if up_sessions.count() > 0 and up_sessions[0].user != the_layer.owner:
                 up_sessions.update(user=the_layer.owner)
@@ -804,20 +809,20 @@ def layer_create(request, template='layers/layer_create.html'):
                         "1": {
                             "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
                             "id": "adm0_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
-                            "geom": "wkb_geometry"
+                            "columns": "g.adm0_code, g.adm0_name, g.the_geom",
+                            "geom": "the_geom"
                             },
                         "2": {
                             "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
                             "id": "adm1_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
-                            "geom": "geom"
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.the_geom",
+                            "geom": "the_geom"
                             },
                         "3": {
                             "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
                             "id": "adm2_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
-                            "geom": "geom"
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.the_geom",
+                            "geom": "the_geom"
                             }
                     }
 
@@ -968,7 +973,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
 
                 available_sld_styles = {
-                    'MULTIPOINT': 'point_style.sld',
+                    'POINT': 'point_style.sld',
                     'MULTILINESTRING': 'line_style.sld',
                     'MULTIPOLYGON': 'polygon_style.sld',
                 }
@@ -987,9 +992,7 @@ def layer_create(request, template='layers/layer_create.html'):
                             args=(
                                 layer,
                             )))
-
             else:
-
                 for e in form_empty_layer.errors.values():
                     errormsgs.append([escape(v) for v in e])
 
@@ -1007,7 +1010,6 @@ def _create_geoserver_geonode_layer(new_table, sld_type):
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
         cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
-
     except Exception as e:
 
         msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
@@ -1022,7 +1024,6 @@ def _create_geoserver_geonode_layer(new_table, sld_type):
             'sld_type': sld_type
         })
 
-        import requests
         r = requests.get(link_to_sld)
         sld_polygon = r.text
         cat.create_style(new_table, sld_polygon, overwrite=True)
@@ -1030,7 +1031,6 @@ def _create_geoserver_geonode_layer(new_table, sld_type):
         layer = cat.get_layer(new_table)
         layer.default_style = style
         cat.save(layer)
-
         gs_slurp(filter=new_table)
         from geonode.base.models import ResourceBase
         layer = ResourceBase.objects.get(title=new_table)
@@ -1103,3 +1103,212 @@ def download_csv(request):
             fields = [field_1, field_2]
             writer.writerows([fields])
         return response
+
+@login_required
+def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
+    context_dict = {}
+    layer = _resolve_layer(
+        request,
+        layername,
+        'base.view_resourcebase',
+        _PERMISSION_MSG_VIEW)
+
+    layers_names = layer.typename
+    workspace, name = layers_names.split(':')
+
+    location = "{location}{service}".format(** {
+        'location': settings.OGC_SERVER['default']['LOCATION'],
+        'service': 'wms',
+    })
+
+    # get layer's attributes with display_order gt 0
+    attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+    layers_attributes = []
+    for values in attr_to_display.values('attribute'):
+        layers_attributes.append(values['attribute'])
+
+    wfs = WebFeatureService(location, version='1.1.0')
+    schema = wfs.get_schema(name)
+    print schema
+
+    # acquire the geometry of layer - requires improvement
+    geom_dict = {
+        'Point': 'Point',
+        'MultiPoint': 'Point',
+        'MultiSurfacePropertyType': 'Polygon',
+        'MultiLineString': 'Linestring'
+    }
+    geom_type = schema.get('geometry') or schema['properties'].get('the_geom')
+    context_dict["layer_geom"] = json.dumps(geom_dict.get(geom_type, 'unknown'))
+
+    schema.pop("geometry")
+    # remove the_geom/geom parameter
+    if 'the_geom' in schema['properties']:
+        schema['properties'].pop('the_geom', None)
+
+    # filter the schema dict based on the values of layers_attributes
+    layer_attributes_schema = []
+    for key in schema['properties'].keys():
+        if key in layers_attributes:
+            layer_attributes_schema.append(key)
+        else:
+            schema['properties'].pop(key, None)
+
+    filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
+
+    context_dict["schema"] = schema
+
+    response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
+
+    features_response = json.dumps(json.loads(response.read()))
+    decoded = json.loads(features_response)
+    decoded_features = decoded['features']
+
+    context_dict["feature_properties"] = json.dumps(decoded_features)
+    context_dict["resource"] = layer
+    context_dict["layer_name"] = json.dumps(name)
+    context_dict["url"] = json.dumps(settings.OGC_SERVER['default']['LOCATION'])
+    context_dict["site_url"] = json.dumps(settings.SITEURL)
+    context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
+
+    return render_to_response(template, RequestContext(request, context_dict))
+
+
+@login_required
+def save_edits(request, template='layers/layer_edit_data.html'):
+
+    data = request.GET.get('data')
+    feature_id = request.GET.get('feature_id')
+    layer_name = request.GET.get('layer_name')
+    data = data.split(",")
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    property_element = ""
+    # concatenate all the properties
+    for i, val in enumerate(data):
+        attribute, value = data[i].split("=")
+        # xml string with property element
+        property_element_1 = """<wfs:Property>
+          <wfs:Name>{}</wfs:Name>
+          <wfs:Value>{}</wfs:Value>
+        </wfs:Property>\n""".format(attribute, value)
+        property_element = property_element + property_element_1
+    # build the update wfs-t request
+    xml_path = "layers/wfs_edit_data.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'feature_id': feature_id,
+            'property_element': mark_safe(property_element)})).strip()
+
+    headers = {'Content-Type': 'application/xml'}  # set what your server accepts
+
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+    if (status_code != 200):
+        message = "Failed to save edited data."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "Edits were saved successfully."
+        success = True
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
+@login_required
+def save_geom_edits(request, template='layers/layer_edit_data.html'):
+
+    layer_name = request.GET.get('layer_name')
+    coords = request.GET.get('coords')
+    feature_id = request.GET.get('feature_id')
+    coords = coords.replace(",", " ")
+    xml_path = "layers/wfs_edit_point_geom.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'coords': coords,
+            'feature_id': feature_id})).strip()
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    headers = {'Content-Type': 'application/xml'} # set what your server accepts
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name)
+
+    if (status_code != 200):
+        message = "Error saving the geometry."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "Edits were saved successfully."
+        success = True
+        return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
+
+
+@login_required
+def save_added_row(request, template='layers/layer_edit_data.html'):
+
+    data = request.GET.get('data')
+    layer_name = request.GET.get('layer_name')
+    coords = request.GET.get('coords')
+    feature_type = request.GET.get('feature_type')
+    data = data.split(",")
+    # concatenate all the properties
+    property_element = ""
+    for i, val in enumerate(data):
+        attribute, value = data[i].split("=")
+        if value == "":
+            continue
+        # xml string with property element
+        property_element_1 = """<{}>{}</{}>\n\t\t""".format(attribute, value, attribute)
+        property_element = property_element + property_element_1
+
+    # prepare the WFS-T insert request depending on the geometry
+    if feature_type == 'Point':
+        coords = coords.replace(",", " ")
+        xml_path = "layers/wfs_add_new_point.xml"
+    elif feature_type == 'LineString':
+        coords = re.sub('(,[^,]*),', r'\1 ', coords)
+        xml_path = "layers/wfs_add_new_line.xml"
+    elif feature_type == 'Polygon':
+        coords = coords.replace(",", " ")
+        xml_path = "layers/wfs_add_new_polygon.xml"
+
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'coords': coords,
+            'property_element': mark_safe(property_element)})).strip()
+    headers = {'Content-Type': 'application/xml'} # set what your server accepts
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'geonode/wfs'
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name)
+    if (status_code != 200):
+        message = "Error adding data."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "New data were added succesfully."
+        success = True
+        return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
+
+# Used to update the BBOX of geoserver and send a see request
+# Takes as input the headers and the layer_name
+# Returns status_code of each request
+def update_bbox_and_seed(headers, layer_name):
+
+    # Update the BBOX of layer in geoserver (use of recalculate)
+    url = settings.OGC_SERVER['default']['LOCATION'] + "rest/workspaces/geonode/datastores/uploaded/featuretypes/{layer_name}.xml?recalculate=nativebbox,latlonbbox".format(** {
+        'layer_name': layer_name
+    })
+    xmlstr = """<featureType><enabled>true</enabled></featureType>"""
+    status_code_bbox = requests.put(url, headers=headers, data=xmlstr, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    # Seed the cache for this layer
+    url = settings.OGC_SERVER['default']['LOCATION'] + "gwc/rest/seed/geonode:{layer_name}.xml".format(** {
+        'layer_name': layer_name
+    })
+    xml_path = "layers/seedRequest_geom.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'workspace': 'geonode',
+            'layer_name': layer_name
+            }))
+    status_code_seed = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+    return status_code_bbox, status_code_seed

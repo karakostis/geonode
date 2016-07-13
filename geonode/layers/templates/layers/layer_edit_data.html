@@ -1,0 +1,256 @@
+{% extends "layers/layer_base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+{% load bootstrap_toolkit %}
+{% load leaflet_tags %}
+{% block title %} {% trans "Edit Layer Data"  %} - {{ block.super }}  {% endblock %}
+
+{% block body_class %}layer edit{% endblock %}
+
+{% block head %}
+
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'lib/css/dataTables.css' %}">
+{% leaflet_css %}
+{% leaflet_css plugins="leaflet.draw" %}
+
+<style>
+  .leaflet-container {  /* all maps */
+    height: 250px;
+    width: 100%;
+  }
+</style>
+
+{% endblock %}
+
+{% block body_outer %}
+
+<div class="page-header">
+  <a href="{% url "layer_browse" %}" class="btn btn-primary pull-right">{% trans "Explore Layers" %}</a>
+  <h2 class="page-title">{% trans "Edit Layer Data" %}</h2>
+</div>
+<div id="status_msg"></div>
+<!-- added for edit layer data functionality -->
+<div class="row">
+  <div class="col-md-12">
+    <table id="layer_data">
+      <thead id="table_head">
+      </thead>
+    </table>
+    </br>
+    <h4> Add another row </h4>
+    <table id="add_data">
+      <thead id="table_add_head">
+      </thead>
+    </table>
+    </br>
+  </div>
+</div>
+
+<div>
+<a class="btn btn-danger btn-s pull-right" id="metadata_btn" href="#">Finish Edits</a>
+<div>
+<!-- Modal with the map for adding/editing geometry-->
+<div class="modal fade" id="add_geometry" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">{% trans "Edit Features" %}</h4>
+      </div>
+      <div class="modal-body-add">
+        <ul class="nav nav-tabs" id="tabContent_add_geom" style="display: none;">
+            <li class="active"><a href="#map" data-toggle="tab">{% trans "Map Add" %}</a></li>
+        </ul>
+        </br>
+        <div class="tab-content-add-map" style="display: none;">  <!--  added now-->
+          <div id="map" class="tab-pane fade in active">
+            <div id="preview_add_geom_modal"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" id="_save_added_data" data-dismiss="modal">{% trans "Save and Close" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_script %}
+
+<script type="text/javascript">
+
+  $(function() {
+    feature_properties = {{ feature_properties | safe }};
+    data_from_view_url = {{ url | safe }};
+    schema = {{ schema | safe }};
+    layer_name = {{ layer_name | safe }};
+    site_url = {{ site_url | safe }};
+    default_workspace = {{ default_workspace | safe }};
+    whole_array = [];
+    // build the column names for the table
+    if (feature_properties.length > 0 && "properties" in feature_properties[0]){
+      all_columns = ['<th>Edit</th>'];
+      for (var key in feature_properties[0]['properties']){
+        all_columns.push("<th>" + key + "</th>");
+      }
+    } else if (feature_properties.length == 0 && "properties" in schema){
+      all_columns = ['<th>Add</th>'];
+      for (var key in schema['properties']) {
+        all_columns.push("<th>" + key + "</th>");
+      }
+      length_of_array = all_columns.length;
+    }
+
+    all_columns = all_columns.join("");
+    $("#table_head").append('<tr>' + all_columns +'</tr>');
+    $("#table_add_head").append('<tr>' + all_columns +'</tr>');
+
+    if (feature_properties.length > 0){
+      for (i = 0; i < feature_properties.length; i++){
+        row_values = [];
+        // add id (fid from table) and edit button
+        layer_name = feature_properties[i]['id'].split(".")[0];
+        row_id = feature_properties[i]['id'].split(".")[1];
+        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:73px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit" %}</button></br><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Geometry" %}</button>';
+        row_values.push(edit_btn);
+
+        for (var key in feature_properties[i]['properties']) {
+          // each row_values contains the values of attributes for each row
+          row_values.push(feature_properties[i]['properties'][key]);
+        }
+        // whole_array is an array of arrays which contains the values for each row (fid)
+        whole_array.push(row_values);
+      }
+      length_of_array = row_values.length;
+    }
+
+    // add data using DataTable lib
+    $("#layer_data").dataTable({
+      "scrollX": true,
+      "aaData":whole_array,
+      "iDisplayLength": 10 // display 10 rows on each page
+    });
+
+    //Functionality to create row for adding data
+    whole_added_val = [];
+    // create an array with same length as the number of attributes
+    row_add_values = new Array(length_of_array);
+    // initialize array - can improve
+    for (var i=0; i<length_of_array; i++){
+      row_add_values[i] = ''
+    }
+    add_btn = '<button id="_add_data" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" style="background-color:#a7a3a3;border-color:#a7a3a3">Add</button>';
+    row_add_values[0] = add_btn
+
+    whole_added_val.push(row_add_values);
+    // add new data
+    $("#add_data").dataTable({
+      "scrollX": true,
+      "aaData": whole_added_val
+    });
+    // remove not necessary controls
+    $("#add_data_paginate, #add_data_filter,#add_data_length,#add_data_info").css({"display": "none"});
+    // make add new geometry cells always editable
+    $("#_add_data").closest('td').siblings().attr('contenteditable', 'true');
+
+    // functionality to edit non spatial values
+    $(document.body).on("click", "._edit_save_btn",function(e){
+      // add attribute to make cells editable for this row
+      $(this).closest('td').siblings().attr('contenteditable', 'true');
+      $(this).toggleClass("clicked");
+      var id = this.id;
+      var id_selector = $("#"+id);
+      var status_msg = $("#status_msg");
+      $("._edit_save_btn").not(id_selector).prop('disabled', true); // disable all other buttons but selected
+
+      if (id_selector.hasClass("clicked")) {
+        // change color/ name/ hide datatables pagination, fitlering etc.
+        id_selector.css({ "background-color": "#FF0000", "border-color": "#FF0000"  });
+        id_selector.html('Save');
+        $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "none"});
+
+      } else {
+        id_selector.html('Edit');
+        id_selector.css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+        //$('td').removeAttr('contenteditable'); // remove all attributes which make cells editable
+        id_selector.closest('td').siblings().attr('contenteditable', 'false');
+        $("._edit_save_btn").prop('disabled', false);
+        $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "block"});
+
+        // get the values of the row
+        var tdArray = id_selector.closest('td').siblings().map(function(){
+           return this.textContent;
+        }).get();
+
+        // get the names of the columns
+        var thArray = [];
+        $('#layer_data > thead > tr > th').each(function(){
+            thArray.push($(this).text())
+        })
+        thArray.shift();
+
+        //build data to send
+        data_to_send = '?data='
+        for (i = 0; i < thArray.length; i++) {
+            data_to_send = data_to_send + thArray[i] + '=' + tdArray[i].replace(/,/g , " ") + ',' // replace commas with space
+        }
+
+        data_to_send = data_to_send.slice(0, -1); // remove last character
+        data_to_send = data_to_send + "&feature_id=" + id + "&layer_name=" + layer_name
+        // build whole url
+        whole_url = "{% url 'save_edits' %}" + data_to_send;
+        id_selector.attr("href", whole_url);
+
+        $.ajax({
+          type: "GET",
+          url: whole_url,
+          success: function(data) {
+            status_msg.empty();
+            if (data['success'] == true){
+              status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
+            } else {
+              status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
+            }
+          }
+        });
+      }
+    });
+
+    $("._edit_geometry_btn").click(function(){
+      $('#tabContent_edit_geom').show();
+      $('.tab-content-edit-map').show();
+    });
+
+    $(document.body).on("click", "._add_save_btn",function(e){
+      $("#add_geometry").data("clicked_btn", this.id);
+      $('#tabContent_add_geom').show();
+      $('.tab-content-add-map').show();
+    });
+  });
+
+  // change color of toggle button on click
+  $("._edit_save_btn").click(function() {
+    $(this).toggleClass("clicked");
+    var button_toggle = $("#button-toggle");
+    var tabContent = $('#tabContent');
+    var tab_content = $('.tab-content');
+    if (button_toggle.hasClass("clicked")) {
+      button_toggle.css({ "background-color": "#3276b1", "border-color": "#3276b1"  });
+      tabContent.show();
+      tab_content.show();
+    } else {
+      button_toggle.css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+      tabContent.hide();
+      tab_content.hide();
+    }
+  });
+
+  $("#metadata_btn").click(function() {
+    url = site_url + "layers/" + default_workspace + ":" + layer_name + "/metadata";
+    $("#metadata_btn").prop("href", url)
+  });
+
+</script>
+{% include "layers/layer_edit_data_modal.html" %}
+{% endblock extra_script %}

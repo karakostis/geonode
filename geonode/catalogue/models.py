@@ -42,9 +42,11 @@ def catalogue_post_save(instance, sender, **kwargs):
     """Get information from catalogue
     """
     try:
+
         catalogue = get_catalogue()
         catalogue.create_record(instance)
         record = catalogue.get_record(instance.uuid)
+
     except EnvironmentError, err:
         msg = 'Could not connect to catalogue to save information for layer "%s"' % instance.name
         if err.reason.errno == errno.ECONNREFUSED:
@@ -82,6 +84,8 @@ def catalogue_post_save(instance, sender, **kwargs):
     resources.update(metadata_xml=md_doc)
     resources.update(csw_wkt_geometry=csw_wkt_geometry)
     resources.update(csw_anytext=csw_anytext)
+
+
 
 
 def catalogue_pre_save(instance, sender, **kwargs):

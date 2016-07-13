@@ -303,7 +303,7 @@ class UploadEmptyLayerForm(forms.Form):
     empty_layer_name = forms.CharField(max_length=255, required=True, label="Name of new Layer")
 
     GEOM_TYPE = (
-        ('MULTIPOINT', 'Points'),
+        ('POINT', 'Points'),
         ('MULTILINESTRING', 'Lines'),
         ('MULTIPOLYGON', 'Polygons')
     )
