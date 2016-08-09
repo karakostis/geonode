@@ -804,20 +804,20 @@ def layer_create(request, template='layers/layer_create.html'):
                         "1": {
                             "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
                             "id": "adm0_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
-                            "geom": "wkb_geometry"
+                            "columns": "g.adm0_code, g.adm0_name, g.the_geom",
+                            "geom": "the_geom"
                             },
                         "2": {
                             "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
                             "id": "adm1_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
-                            "geom": "geom"
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.the_geom",
+                            "geom": "the_geom"
                             },
                         "3": {
                             "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
                             "id": "adm2_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
-                            "geom": "geom"
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.the_geom",
+                            "geom": "the_geom"
                             }
                     }
 
@@ -968,7 +968,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
 
                 available_sld_styles = {
-                    'MULTIPOINT': 'point_style.sld',
+                    'POINT': 'point_style.sld',
                     'MULTILINESTRING': 'line_style.sld',
                     'MULTIPOLYGON': 'polygon_style.sld',
                 }
