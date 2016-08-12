@@ -623,7 +623,8 @@ MAP_BASELAYERS = [{
     "name": "mapnik",
     "visibility": False,
     "fixed": True,
-    "group": "background"
+    "group": "background",
+    "tileOptions": {"crossOriginKeyword": "null"}
 }, {
     "source": {"ptype": "gxp_mapquestsource"},
     "name": "osm",
@@ -803,6 +804,15 @@ LEAFLET_CONFIG = {
         'leaflet-areaselect': {
             'css': 'lib/css/leaflet-areaselect.css',
             'js': 'lib/js/leaflet-areaselect.js',
+            'auto-include': True,
+        },
+        'Leaflet-WFST': {
+            'js': 'lib/js/Leaflet-WFST.min.js',
+            'auto-include': True,
+        },
+        'leaflet.draw': {
+            'css': 'lib/css/leaflet.draw.css',
+            'js': 'lib/js/leaflet.draw.js',
             'auto-include': True,
         },
     },
