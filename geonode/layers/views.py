@@ -1259,7 +1259,25 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
         property_element_1 = """<{}>{}</{}>\n\t\t""".format(attribute, value, attribute)
         property_element = property_element + property_element_1
 
-    # prepare the WFS-T insert request depending on the geometry
+    headers = {'Content-Type': 'application/xml'} # set what your server accepts
+
+    # Make a Describe Feature request to get the correct link for the xmlns:geonode
+    xml_path = "layers/wfs_describe_feature.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name})).strip()
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    describe_feature_response = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).text
+
+    from lxml import etree
+    xml = bytes(bytearray(describe_feature_response, encoding='utf-8'))  # encode it and force the same encoder in the parser
+    doc = etree.XML(xml)
+    nsmap = {}
+    for ns in doc.xpath('//namespace::*'):
+        nsmap[ns[0]] = ns[1]
+    if nsmap['geonode']:
+        geonode_url = nsmap['geonode']
+
+    # Prepare the WFS-T insert request depending on the geometry
     if feature_type == 'Point':
         coords = coords.replace(",", " ")
         xml_path = "layers/wfs_add_new_point.xml"
@@ -1271,10 +1289,10 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
         xml_path = "layers/wfs_add_new_polygon.xml"
 
     xmlstr = get_template(xml_path).render(Context({
+            'geonode_url': geonode_url,
             'layer_name': layer_name,
             'coords': coords,
             'property_element': mark_safe(property_element)})).strip()
-    headers = {'Content-Type': 'application/xml'} # set what your server accepts
 
     url = settings.OGC_SERVER['default']['LOCATION'] + 'geonode/wfs'
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
