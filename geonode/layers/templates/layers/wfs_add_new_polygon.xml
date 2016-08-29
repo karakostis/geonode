@@ -1,8 +1,9 @@
 <wfs:Transaction service="WFS" version="1.1.0"
   xmlns:wfs="http://www.opengis.net/wfs"
-  xmlns:gml="http://www.opengis.net/gml">
+  xmlns:gml="http://www.opengis.net/gml"
+  xmlns:geonode="{{ geonode_url }}">
   <wfs:Insert>
-    <{{ layer_name }}>
+    <geonode:{{ layer_name }}>
       <the_geom>
         <gml:MultiSurface srsDimension="2" srsName="http://www.opengis.net/gml/srs/epsg.xml#4326">
           <gml:surfaceMember>
@@ -19,6 +20,6 @@
         </gml:MultiSurface>
       </the_geom>
       {{ property_element }}
-    </{{ layer_name }}>
+    </geonode:{{ layer_name }}>
   </wfs:Insert>
 </wfs:Transaction>

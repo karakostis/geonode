@@ -11,6 +11,7 @@
       var status_msg = $("#status_msg");
       add_geometry = $("#add_geometry");
       save_added_data = $("#_save_added_data");
+      close_added_data = $("#_close_added_data");
       // functionality to add spatial and non spatial values
       save_added_data.on("click",function(e){
         if (add_geometry.data("clicked_btn") == '_add_data') {
@@ -27,17 +28,18 @@
             })
             thArray.shift();
             //Build data to send
-            data_to_send = '?data='
+            data_to_send = ''
             for (i = 0; i < thArray.length; i++) {
                 data_to_send = data_to_send + thArray[i] + '=' + tdArray[i] + ','
             }
             data_to_send = data_to_send.slice(0, -1); // remove last character
-            data_to_send = data_to_send  + "&layer_name=" + layer_name + "&coords=" + coords + "&feature_type=" + feature_type
+
             // build whole url
-            whole_url = "{% url 'save_added_row' %}" + data_to_send;
+            whole_url = "{% url 'save_added_row' %}";
             $.ajax({
-              type: "GET",
+              type: "POST",
               url: whole_url,
+              data: { json_data: JSON.stringify({ data: data_to_send, feature_type: feature_type, layer_name: layer_name, coords:coords }) },
               success: function(data) {
                 status_msg.empty();
                 if (data['success'] == true){
@@ -53,11 +55,11 @@
           var coords = add_geometry.data("coords");
           var feature_id = $("#"+ add_geometry.data("clicked_btn")).data('fid');
           if (coords != null && coords.length > 0) {
-            data_to_send = "?layer_name=" + layer_name + "&coords=" + coords + "&feature_id=" + feature_id
-            whole_url = "{% url 'save_geom_edits' %}" + data_to_send;
+            whole_url = "{% url 'save_geom_edits' %}";
             $.ajax({
-              type: "GET",
+              type: "POST",
               url: whole_url,
+              data: { json_data: JSON.stringify({ feature_id: feature_id, layer_name: layer_name, coords:coords }) },
               dataType: "json",
               success: function(data) {
                 status_msg.empty();
@@ -71,6 +73,14 @@
             add_geometry.data("coords", null);
           }
         }
+      });
+
+      // close window without saving anything
+      close_added_data.on("click",function(e){
+
+
+
+
       });
     });
 
@@ -201,6 +211,12 @@
               $( ".leaflet-draw" ).remove();
             });
 
+
+            close_added_data.click(function() {
+              map.removeLayer(drawnItems);
+              $( ".leaflet-draw" ).remove();
+            });
+
           } else {
             layer_name = {{ layer_name | safe }};
             base_url = {{ url | safe }};
@@ -281,7 +297,13 @@
               add_geometry.data("coords", coords);
 
             });
+
             save_added_data.click(function() {
+              map.removeLayer(drawnItems);
+              $( ".leaflet-draw" ).remove();
+            });
+
+            close_added_data.click(function() {
               map.removeLayer(drawnItems);
               $( ".leaflet-draw" ).remove();
             });

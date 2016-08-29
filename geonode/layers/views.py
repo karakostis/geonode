@@ -1177,9 +1177,11 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 @login_required
 def save_edits(request, template='layers/layer_edit_data.html'):
 
-    data = request.GET.get('data')
-    feature_id = request.GET.get('feature_id')
-    layer_name = request.GET.get('layer_name')
+    data_dict = json.loads(request.POST.get('json_data'))
+
+    feature_id = data_dict['feature_id']
+    layer_name = data_dict['layer_name']
+    data = data_dict['data']
     data = data.split(",")
 
     url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
@@ -1215,10 +1217,11 @@ def save_edits(request, template='layers/layer_edit_data.html'):
 @login_required
 def save_geom_edits(request, template='layers/layer_edit_data.html'):
 
-    layer_name = request.GET.get('layer_name')
-    coords = request.GET.get('coords')
-    feature_id = request.GET.get('feature_id')
-    coords = coords.replace(",", " ")
+    data_dict = json.loads(request.POST.get('json_data'))
+    feature_id = data_dict['feature_id']
+    layer_name = data_dict['layer_name']
+    coords = ' '.join(map(str, data_dict['coords']))
+
     xml_path = "layers/wfs_edit_point_geom.xml"
     xmlstr = get_template(xml_path).render(Context({
             'layer_name': layer_name,
@@ -1244,11 +1247,13 @@ def save_geom_edits(request, template='layers/layer_edit_data.html'):
 @login_required
 def save_added_row(request, template='layers/layer_edit_data.html'):
 
-    data = request.GET.get('data')
-    layer_name = request.GET.get('layer_name')
-    coords = request.GET.get('coords')
-    feature_type = request.GET.get('feature_type')
+    data_dict = json.loads(request.POST.get('json_data'))
+    feature_type = data_dict['feature_type']
+    layer_name = data_dict['layer_name']
+    data = data_dict['data']
     data = data.split(",")
+
+
     # concatenate all the properties
     property_element = ""
     for i, val in enumerate(data):
@@ -1259,22 +1264,44 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
         property_element_1 = """<{}>{}</{}>\n\t\t""".format(attribute, value, attribute)
         property_element = property_element + property_element_1
 
-    # prepare the WFS-T insert request depending on the geometry
+    headers = {'Content-Type': 'application/xml'} # set what your server accepts
+
+    # Make a Describe Feature request to get the correct link for the xmlns:geonode
+    xml_path = "layers/wfs_describe_feature.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name})).strip()
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    describe_feature_response = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).text
+
+    from lxml import etree
+    xml = bytes(bytearray(describe_feature_response, encoding='utf-8'))  # encode it and force the same encoder in the parser
+    doc = etree.XML(xml)
+    nsmap = {}
+    for ns in doc.xpath('//namespace::*'):
+        nsmap[ns[0]] = ns[1]
+    if nsmap['geonode']:
+        geonode_url = nsmap['geonode']
+    
+    # Prepare the WFS-T insert request depending on the geometry
     if feature_type == 'Point':
+        coords = ','.join(map(str, data_dict['coords']))
         coords = coords.replace(",", " ")
         xml_path = "layers/wfs_add_new_point.xml"
     elif feature_type == 'LineString':
+        coords = ','.join(map(str, data_dict['coords']))
         coords = re.sub('(,[^,]*),', r'\1 ', coords)
         xml_path = "layers/wfs_add_new_line.xml"
     elif feature_type == 'Polygon':
+        coords = [item for sublist in data_dict['coords'] for item in sublist]
+        coords = ','.join(map(str, coords))
         coords = coords.replace(",", " ")
         xml_path = "layers/wfs_add_new_polygon.xml"
 
     xmlstr = get_template(xml_path).render(Context({
+            'geonode_url': geonode_url,
             'layer_name': layer_name,
             'coords': coords,
             'property_element': mark_safe(property_element)})).strip()
-    headers = {'Content-Type': 'application/xml'} # set what your server accepts
 
     url = settings.OGC_SERVER['default']['LOCATION'] + 'geonode/wfs'
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
