@@ -69,7 +69,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" id="_save_added_data" data-dismiss="modal">{% trans "Save and Close" %}</button>
+        <button type="button" class="btn btn-default" id="_save_added_data" data-dismiss="modal">{% trans "Save" %}</button>
+        <button type="button" class="btn btn-default" id="_close_added_data" data-dismiss="modal">{% trans "Close" %}</button>
       </div>
     </div>
   </div>
@@ -162,58 +163,71 @@
       var id = this.id;
       var id_selector = $("#"+id);
       var status_msg = $("#status_msg");
+
       $("._edit_save_btn").not(id_selector).prop('disabled', true); // disable all other buttons but selected
 
       if (id_selector.hasClass("clicked")) {
+
         // change color/ name/ hide datatables pagination, fitlering etc.
         id_selector.css({ "background-color": "#FF0000", "border-color": "#FF0000"  });
         id_selector.html('Save');
         $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "none"});
 
       } else {
-        id_selector.html('Edit');
-        id_selector.css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
-        //$('td').removeAttr('contenteditable'); // remove all attributes which make cells editable
-        id_selector.closest('td').siblings().attr('contenteditable', 'false');
-        $("._edit_save_btn").prop('disabled', false);
-        $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "block"});
 
-        // get the values of the row
-        var tdArray = id_selector.closest('td').siblings().map(function(){
-           return this.textContent;
-        }).get();
+        if (confirm("Are you sure you want to save the edits?")){
 
-        // get the names of the columns
-        var thArray = [];
-        $('#layer_data > thead > tr > th').each(function(){
-            thArray.push($(this).text())
-        })
-        thArray.shift();
+           id_selector.html('Edit');
+           id_selector.css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+           id_selector.closest('td').siblings().attr('contenteditable', 'false');
+           $("._edit_save_btn").prop('disabled', false);
+           $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "block"});
 
-        //build data to send
-        data_to_send = '?data='
-        for (i = 0; i < thArray.length; i++) {
-            data_to_send = data_to_send + thArray[i] + '=' + tdArray[i].replace(/,/g , " ") + ',' // replace commas with space
+           // get the values of the row
+           var tdArray = id_selector.closest('td').siblings().map(function(){
+              return this.textContent;
+           }).get();
+
+           // get the names of the columns
+           var thArray = [];
+           $('#layer_data > thead > tr > th').each(function(){
+               thArray.push($(this).text())
+           })
+           thArray.shift();
+
+           //build data to send
+           data_to_send = ''
+           for (i = 0; i < thArray.length; i++) {
+               data_to_send = data_to_send + thArray[i] + '=' + tdArray[i].replace(/,/g , " ") + ',' // replace commas with space
+           }
+
+           data_to_send = data_to_send.slice(0, -1); // remove last character
+           whole_url = "{% url 'save_edits' %}";
+           id_selector.attr("href", whole_url);
+
+           $.ajax({
+             type: "POST",
+             url: whole_url,
+             data: { json_data: JSON.stringify({ data: data_to_send, feature_id: id, layer_name: layer_name }) },
+             success: function(data) {
+               status_msg.empty();
+               if (data['success'] == true){
+                 status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
+               } else {
+                 status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
+               }
+             }
+           });
+
+        } else{
+
+          id_selector.html('Edit');
+          id_selector.css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+          id_selector.closest('td').siblings().attr('contenteditable', 'false');
+          $("._edit_save_btn").prop('disabled', false);
+          $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "block"});
+          status_msg.empty();
         }
-
-        data_to_send = data_to_send.slice(0, -1); // remove last character
-        data_to_send = data_to_send + "&feature_id=" + id + "&layer_name=" + layer_name
-        // build whole url
-        whole_url = "{% url 'save_edits' %}" + data_to_send;
-        id_selector.attr("href", whole_url);
-
-        $.ajax({
-          type: "GET",
-          url: whole_url,
-          success: function(data) {
-            status_msg.empty();
-            if (data['success'] == true){
-              status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
-            } else {
-              status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
-            }
-          }
-        });
       }
     });
 
