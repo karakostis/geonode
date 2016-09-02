@@ -117,7 +117,7 @@
         // add id (fid from table) and edit button
         layer_name = feature_properties[i]['id'].split(".")[0];
         row_id = feature_properties[i]['id'].split(".")[1];
-        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:66px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit" %}</button></br><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:66px;">{% trans "Geometry" %}</button><button id="fid__cancel__' + row_id + '"  class="btn btn-info btn-sm _cancel_btn" style="margin-bottom:5px;width:66px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Cancel" %}</button>';
+        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:66px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit" %}</button></br><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:66px;">{% trans "Geometry" %}</button></br><button id="fid__cancel__' + row_id + '"  class="btn btn-info btn-sm _cancel_btn" style="margin-bottom:5px;width:66px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Cancel" %}</button>';
         row_values.push(edit_btn);
 
         for (var key in feature_properties[i]['properties']) {
