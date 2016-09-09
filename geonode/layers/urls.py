@@ -33,6 +33,7 @@ urlpatterns = patterns(
     url(r'^create$', 'layer_create', name='layer_create'),
     url(r'^download_csv$', 'download_csv', name='download_csv'),
     url(r'^save_edits$', 'save_edits', name='save_edits'),
+    url(r'^load_layer_data$', 'load_layer_data', name='load_layer_data'),
     url(r'^save_geom_edits$', 'save_geom_edits', name='save_geom_edits'),
     url(r'^save_added_row$', 'save_added_row', name='save_added_row'),
     url(r'^(?P<layername>[^/]*)$', 'layer_detail', name="layer_detail"),
