@@ -697,7 +697,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         column.name = slugify(unicode(column.name)).replace('-', '_')
         # Check if the selected value from the dropdown menu matches the first value of the CSV header
         if idx == 0:
-            if column.name != geom_table_id:
+            if column.name.strip() != geom_table_id.strip():
                 errormsgs_val = "The selected value of Layer Type doesn't match the one of the imported layer."
                 status_code = '400'
                 return errormsgs_val, status_code

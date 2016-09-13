@@ -433,7 +433,6 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
 
     poc = layer.poc
     metadata_author = layer.metadata_author
-
     if request.method == "POST":
         layer_form = LayerForm(request.POST, instance=layer, prefix="resource")
         attribute_form = layer_attribute_set(
@@ -1230,6 +1229,7 @@ def save_edits(request, template='layers/layer_edit_data.html'):
     headers = {'Content-Type': 'application/xml'}  # set what your server accepts
 
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
     if (status_code != 200):
         message = "Failed to save edited data."
         success = False
@@ -1258,7 +1258,6 @@ def save_geom_edits(request, template='layers/layer_edit_data.html'):
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
 
     status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name)
-
     if (status_code != 200):
         message = "Error saving the geometry."
         success = False
@@ -1339,6 +1338,30 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
     else:
         message = "New data were added succesfully."
         success = True
+
+        # trying to reload CSW BBX
+
+        full_layer_name = "geonode:" + layer_name
+        print ("full_layer_name:", full_layer_name)
+        layer = _resolve_layer(
+            request,
+            full_layer_name,
+            'base.change_resourcebase_metadata',
+            _PERMISSION_MSG_METADATA)
+
+        print ("layer.bbox:",layer.bbox)
+
+        """
+        instance = layer
+        from geonode.catalogue.models import catalogue_post_save
+        from geonode.layers.models import Layer
+        catalogue_post_save(instance, Layer)
+        """
+        ####
+
+
+
+
         return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
 
 # Used to update the BBOX of geoserver and send a see request

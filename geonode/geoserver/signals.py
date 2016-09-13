@@ -475,7 +475,7 @@ def geoserver_post_save(instance, sender, **kwargs):
     from geonode.catalogue.models import catalogue_post_save
     from geonode.layers.models import Layer
     catalogue_post_save(instance, Layer)
-    
+
 
 
 

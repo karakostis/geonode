@@ -86,8 +86,6 @@ def catalogue_post_save(instance, sender, **kwargs):
     resources.update(csw_anytext=csw_anytext)
 
 
-
-
 def catalogue_pre_save(instance, sender, **kwargs):
     """Send information to catalogue
     """

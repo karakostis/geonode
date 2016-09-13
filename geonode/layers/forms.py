@@ -259,7 +259,6 @@ class UploadCSVForm(forms.Form):
         ('1', 'Global Layer'),
         ('2', 'Layer by Admin1'),
         ('3', 'Layer by Admin2'),
-        ('3', 'Layer by Location'),
     )
     layer_type = forms.ChoiceField(choices=LAYER_TYPE, required=True)
 
