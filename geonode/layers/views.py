@@ -1247,6 +1247,13 @@ def save_geom_edits(request, template='layers/layer_edit_data.html'):
     layer_name = data_dict['layer_name']
     coords = ' '.join(map(str, data_dict['coords']))
 
+    full_layer_name = "geonode:" + layer_name
+    layer = _resolve_layer(
+        request,
+        full_layer_name,
+        'base.change_resourcebase_metadata',
+        _PERMISSION_MSG_METADATA)
+
     xml_path = "layers/wfs_edit_point_geom.xml"
     xmlstr = get_template(xml_path).render(Context({
             'layer_name': layer_name,
@@ -1265,6 +1272,7 @@ def save_geom_edits(request, template='layers/layer_edit_data.html'):
     else:
         message = "Edits were saved successfully."
         success = True
+        update_bbox_in_CSW(layer, layer_name)
         return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
 
 
@@ -1277,6 +1285,12 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
     data = data_dict['data']
     data = data.split(",")
 
+    full_layer_name = "geonode:" + layer_name
+    layer = _resolve_layer(
+        request,
+        full_layer_name,
+        'base.change_resourcebase_metadata',
+        _PERMISSION_MSG_METADATA)
 
     # concatenate all the properties
     property_element = ""
@@ -1338,30 +1352,7 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
     else:
         message = "New data were added succesfully."
         success = True
-
-        # trying to reload CSW BBX
-
-        full_layer_name = "geonode:" + layer_name
-        print ("full_layer_name:", full_layer_name)
-        layer = _resolve_layer(
-            request,
-            full_layer_name,
-            'base.change_resourcebase_metadata',
-            _PERMISSION_MSG_METADATA)
-
-        print ("layer.bbox:",layer.bbox)
-
-        """
-        instance = layer
-        from geonode.catalogue.models import catalogue_post_save
-        from geonode.layers.models import Layer
-        catalogue_post_save(instance, Layer)
-        """
-        ####
-
-
-
-
+        update_bbox_in_CSW(layer, layer_name)
         return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
 
 # Used to update the BBOX of geoserver and send a see request
@@ -1387,3 +1378,21 @@ def update_bbox_and_seed(headers, layer_name):
             }))
     status_code_seed = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
     return status_code_bbox, status_code_seed
+
+# Update the values for BBOX in CSW with the values calculated in geoserver layer
+def update_bbox_in_CSW(layer, layer_name):
+
+    # Get the coords from geoserver layer and update the base_resourceBase table
+    from geoserver.catalog import Catalog
+    cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+    resource = cat.get_resource(layer_name, workspace="geonode")
+    # use bbox_to_wkt to convert the BBOX coords to the wkt format
+    from geonode.utils import bbox_to_wkt
+    r = bbox_to_wkt(resource.latlon_bbox[0], resource.latlon_bbox[1], resource.latlon_bbox[2], resource.latlon_bbox[3], "4326")
+    csw_wkt_geometry = r.split(";", 1)[1]
+    # update the base_resourceBase
+    from geonode.base.models import ResourceBase
+    resources = ResourceBase.objects.filter(pk=layer.id)
+    resources.update(bbox_x0=resource.latlon_bbox[0], bbox_x1=resource.latlon_bbox[1], bbox_y0=resource.latlon_bbox[2], bbox_y1=resource.latlon_bbox[3], csw_wkt_geometry=csw_wkt_geometry)
+
+    return csw_wkt_geometry

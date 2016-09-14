@@ -48,9 +48,6 @@
   </div>
 </div>
 
-<div>
-<a class="btn btn-danger btn-s pull-right" id="metadata_btn" href="#">Finish Edits</a>
-<div>
 <!-- Modal with the map for adding/editing geometry-->
 <div class="modal fade" id="add_geometry" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog">
@@ -281,11 +278,6 @@
       tabContent.hide();
       tab_content.hide();
     }
-  });
-
-  $("#metadata_btn").click(function() {
-    url = site_url + "layers/" + default_workspace + ":" + layer_name + "/metadata";
-    $("#metadata_btn").prop("href", url)
   });
 
   function discard_changes(clicked_btn, layer_data){
