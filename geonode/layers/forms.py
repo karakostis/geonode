@@ -292,7 +292,6 @@ class UploadCSVForm(forms.Form):
         else:
             csv_file_type = str(csv_file).split('.')
             if csv_file_type[1] not in ['csv','CSV']:
-                print csv_file_type[1]
                 raise forms.ValidationError(_("This is not a supported format. Please upload a CSV file."))
         return cleaned_data
 

@@ -326,12 +326,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     elif (type(resource).__name__ == 'FeatureType'):
         context_dict["layer_type"] = "vector"
 
-
-
-
-
-
-        ## THIS IS DUPLICATE WITH THE ONE IN LOAD_DATA FUNCTION
         # get layer's attributes with display_order gt 0
         attr_to_display = layer.attribute_set.filter(display_order__gt=0)
         layers_attributes = []
@@ -1152,6 +1146,7 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     wfs = WebFeatureService(location, version='1.1.0')
     schema = wfs.get_schema(name)
+    print schema
 
     # acquire the geometry of layer - requires improvement
     geom_dict = {

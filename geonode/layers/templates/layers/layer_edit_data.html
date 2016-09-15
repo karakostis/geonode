@@ -95,12 +95,12 @@
       //all_columns = ['<th>Edit</th><th></th>'];
       all_columns = ['<th> </th>'];
       for (var key in feature_properties[0]['properties']){
-        all_columns.push("<th>" + key + "</th>");
+        all_columns.push("<th data-attributes=" + schema['properties'][key]+">" + key + "</th>");
       }
     } else if (feature_properties.length == 0 && "properties" in schema){
       all_columns = ['<th>Add</th>'];
       for (var key in schema['properties']) {
-        all_columns.push("<th>" + key + "</th>");
+        all_columns.push("<th data-attributes=" + schema['properties'][key]+">" + key + "</th>");
       }
       length_of_array = all_columns.length;
     }
@@ -204,12 +204,19 @@
               return this.textContent;
            }).get();
 
-           // get the names of the columns
+           // get the names and variable type of the columns
            var thArray = [];
+           var th_data_type = [];
            $('#layer_data > thead > tr > th').each(function(){
                thArray.push($(this).text())
+               th_data_type.push($(this).attr('data-attributes'))
            })
            thArray.shift();
+           th_data_type.shift();
+
+
+           console.log(thArray)
+           console.log(th_data_type)
 
            //build data to send
            data_to_send = ''
@@ -218,8 +225,13 @@
            }
 
            data_to_send = data_to_send.slice(0, -1); // remove last character
+           console.log(data_to_send)
            whole_url = "{% url 'save_edits' %}";
            id_selector.attr("href", whole_url);
+
+           // perform check that passed values are of the right variable type (e.g.not passing strings in int field)
+
+
 
            $.ajax({
              type: "POST",
