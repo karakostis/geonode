@@ -411,7 +411,6 @@ def load_layer_data(request, template='layers/layer_detail.html'):
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
 
-    print context_dict["feature_properties"]
     return HttpResponse(json.dumps(context_dict), mimetype="application/json")
 
 
@@ -1049,8 +1048,8 @@ def _create_geoserver_geonode_layer(new_table, sld_type):
         })
 
         r = requests.get(link_to_sld)
-        sld_polygon = r.text
-        cat.create_style(new_table, sld_polygon, overwrite=True)
+        sld = r.text
+        cat.create_style(new_table, sld, overwrite=True)
         style = cat.get_style(new_table)
         layer = cat.get_layer(new_table)
         layer.default_style = style
@@ -1153,7 +1152,6 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     wfs = WebFeatureService(location, version='1.1.0')
     schema = wfs.get_schema(name)
-    print schema
 
     # acquire the geometry of layer - requires improvement
     geom_dict = {

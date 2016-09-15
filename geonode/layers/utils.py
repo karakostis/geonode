@@ -710,6 +710,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         try:
             sql_table = sql.make_table(csv_table, table_name_temp)
             create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
+            create_table_sql = re.sub(r'VARCHAR\([0-9]*\)','VARCHAR(254)', create_table_sql)
         except:
             return None, str(sys.exc_info()[0])
 
