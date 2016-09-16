@@ -253,7 +253,7 @@ class UploadCSVForm(forms.Form):
         super(UploadCSVForm, self).__init__(*args, **kwargs)
         self.fields['selected_country'] = forms.MultipleChoiceField(choices=get_country_names(), required=True)
 
-    title = forms.CharField(max_length=255, required=True)
+    title = forms.CharField(max_length=80, required=True)
 
     LAYER_TYPE = (
         ('1', 'Global Layer'),
@@ -298,7 +298,7 @@ class UploadCSVForm(forms.Form):
 
 class UploadEmptyLayerForm(forms.Form):
 
-    empty_layer_name = forms.CharField(max_length=255, required=True, label="Name of new Layer")
+    empty_layer_name = forms.CharField(max_length=80, required=True, label="Name of new Layer")
 
     GEOM_TYPE = (
         ('POINT', 'Points'),

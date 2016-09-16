@@ -851,8 +851,9 @@ def layer_create(request, template='layers/layer_create.html'):
                     geom_table_columns = layer_based_info[layer_type[0]]['columns']
                     selected_country = form_csv_layer.cleaned_data["selected_country"]
                     cntr_name = slugify(selected_country[0].replace(" ", "_"))
-                    table_name_temp = "%s_%s_temp" % (cntr_name, title)
-                    table_name = "%s_%s" % (cntr_name, title)
+                    slugified_title = slugify(title.replace(" ", "_"))
+                    table_name_temp = "%s_%s_temp" % (cntr_name, slugified_title)
+                    table_name = "%s_%s" % (cntr_name, slugified_title)
                     table_name_temp = table_name_temp
                     new_table = table_name
 
@@ -865,9 +866,9 @@ def layer_create(request, template='layers/layer_create.html'):
                         ctx['errormsgs'] = errormsgs
                         return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv')}))
 
-                    #  create layer in geoserver
+                    # Create layer in geoserver
                     sld_style = 'polygon_style.sld'
-                    _create_geoserver_geonode_layer(new_table, sld_style)
+                    _create_geoserver_geonode_layer(new_table, sld_style, title)
 
                     ctx['success'] = True
 
@@ -917,7 +918,8 @@ def layer_create(request, template='layers/layer_create.html'):
                 }
 
                 create_empty_layer_data = form_empty_layer.cleaned_data
-
+                title = create_empty_layer_data['empty_layer_name']
+                print ("title:", create_empty_layer_data['empty_layer_name'])
                 table_name = (create_empty_layer_data['empty_layer_name'].lower()).replace(" ", "_")
                 # check table name for special characters
                 if not re.match("^[\w\d_]+$", table_name) or table_name[0].isdigit():
@@ -996,7 +998,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 }
                 sld_style = available_sld_styles[table_geom]
                 # create geoserver and geonode layer
-                _create_geoserver_geonode_layer(table_name, sld_style)
+                _create_geoserver_geonode_layer(table_name, sld_style, title)
 
                 ctx['success'] = True
                 if ctx['success']:
@@ -1020,13 +1022,18 @@ def layer_create(request, template='layers/layer_create.html'):
 
 
 
-def _create_geoserver_geonode_layer(new_table, sld_type):
+def _create_geoserver_geonode_layer(new_table, sld_type, title):
     # Create the Layer in GeoServer from the table
-
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
         cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
+
+        # changing the layer's title in the title set by the user
+        resource = cat.get_resource(new_table, workspace="geonode")
+        resource.title = title
+        cat.save(resource)
+
     except Exception as e:
 
         msg = "Error creating GeoServer layer for %s: %s" % (new_table, str(e))
