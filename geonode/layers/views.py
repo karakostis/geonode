@@ -1050,6 +1050,7 @@ def _create_geoserver_geonode_layer(new_table, sld_type, title):
 
         r = requests.get(link_to_sld)
         sld = r.text
+        sld = sld.replace("name_of_layer", new_table)  # "name_of_layer" is set in the predefined sld in geoserver (polygon_style, line_style, point_style)
         cat.create_style(new_table, sld, overwrite=True)
         style = cat.get_style(new_table)
         layer = cat.get_layer(new_table)
