@@ -765,6 +765,7 @@ def layer_create(request, template='layers/layer_create.html'):
     if request.method == 'GET':
         ctx = {
             'charsets': CHARSETS,
+            "is_layer": True,
         }
 
         # Get the values for the dropdown menus of regions and provinces
@@ -811,7 +812,7 @@ def layer_create(request, template='layers/layer_create.html'):
         ctx['countries'] = countries
 
         if 'fromlayerbtn' in request.POST:
-
+            the_user = request.user
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
 
@@ -868,7 +869,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
                     # Create layer in geoserver
                     sld_style = 'polygon_style.sld'
-                    _create_geoserver_geonode_layer(new_table, sld_style, title)
+                    _create_geoserver_geonode_layer(new_table, sld_style, title, the_user)
 
                     ctx['success'] = True
 
@@ -902,6 +903,8 @@ def layer_create(request, template='layers/layer_create.html'):
 
 
         elif 'emptylayerbtn' in request.POST:
+
+            the_user = request.user
             ctx = {}
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, extra=request.POST.get('total_input_fields'))
@@ -998,7 +1001,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 }
                 sld_style = available_sld_styles[table_geom]
                 # create geoserver and geonode layer
-                _create_geoserver_geonode_layer(table_name, sld_style, title)
+                _create_geoserver_geonode_layer(table_name, sld_style, title, the_user)
 
                 ctx['success'] = True
                 if ctx['success']:
@@ -1022,7 +1025,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
 
 
-def _create_geoserver_geonode_layer(new_table, sld_type, title):
+def _create_geoserver_geonode_layer(new_table, sld_type, title, the_user):
     # Create the Layer in GeoServer from the table
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
@@ -1056,7 +1059,8 @@ def _create_geoserver_geonode_layer(new_table, sld_type, title):
         layer = cat.get_layer(new_table)
         layer.default_style = style
         cat.save(layer)
-        gs_slurp(filter=new_table)
+
+        gs_slurp(owner=the_user, filter=new_table)
         from geonode.base.models import ResourceBase
         layer = ResourceBase.objects.get(title=new_table)
         geoserver_post_save(layer, ResourceBase)

@@ -307,10 +307,8 @@ class UploadEmptyLayerForm(forms.Form):
     )
 
     geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
-
-
     total_input_fields = forms.CharField(widget=forms.HiddenInput())
-
+    
     def __init__(self, *args, **kwargs):
 
         FIELD_TYPE = (
