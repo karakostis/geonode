@@ -34,14 +34,18 @@
 <!-- added for edit layer data functionality -->
 <div class="row">
   <div class="col-md-12">
+    <button type="button" id = "button-toggle" class="btn btn-primary btn-circle" data-toggle="button" placeholder="" data-toggle="tooltip" title="Add another row">
+      {% trans "Add another row" %}
+    </button></br></br>
+    <div id="add_data_div" style="display: none;">
+      <table id="add_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
+        <thead id="table_add_head">
+        </thead>
+      </table>
+    </div>
+    </br></br>
     <table id="layer_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
       <thead id="table_head">
-      </thead>
-    </table>
-    </br>
-    <h4> Add another row </h4>
-    <table id="add_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
-      <thead id="table_add_head">
       </thead>
     </table>
     </br>
@@ -127,7 +131,7 @@
       }
       length_of_array = row_values.length;
     }
-    console.log(whole_array)
+
     // add data using DataTable lib
     var layer_data = $("#layer_data").DataTable({
       "scrollX": true,
@@ -153,7 +157,7 @@
 
     whole_added_val.push(row_add_values);
     // add new data
-    $("#add_data").DataTable({
+    var add_data = $("#add_data").dataTable({
       "scrollX": true,
       "aaData": whole_added_val
     });
@@ -214,38 +218,55 @@
            thArray.shift();
            th_data_type.shift();
 
+           // perform check that passed values are of the right variable type (e.g.not passing strings in int field)
+           var data_validation = false;
+           for (i = 0; i < tdArray.length; i++) {
 
-           console.log(thArray)
-           console.log(th_data_type)
-
-           //build data to send
-           data_to_send = ''
-           for (i = 0; i < thArray.length; i++) {
-               data_to_send = data_to_send + thArray[i] + '=' + tdArray[i].replace(/,/g , " ") + ',' // replace commas with space
+             if (th_data_type[i] == 'string'){
+               if (isNaN(tdArray[i])){
+                 data_validation = true;
+               } else {
+                 data_validation = true;
+               }
+             } else if (th_data_type[i] !== 'string' && !isNaN(tdArray[i])){
+               data_validation = true;
+             } else{
+               data_validation = false;
+               data_type = th_data_type[i];
+               column_name = thArray[i];
+               var value = tdArray[i];
+               break;
+             }
            }
 
-           data_to_send = data_to_send.slice(0, -1); // remove last character
-           console.log(data_to_send)
-           whole_url = "{% url 'save_edits' %}";
-           id_selector.attr("href", whole_url);
+          if (data_validation == false){
+            status_msg.empty();
+            status_msg.append( "<p id='wrong-data-type' class='alert alert-warning'> Error saving data. Column " + column_name + " is " + data_type + ". Value " + value + " is not " + data_type + ".</p>");
+          } else {
 
-           // perform check that passed values are of the right variable type (e.g.not passing strings in int field)
-
-
-
-           $.ajax({
-             type: "POST",
-             url: whole_url,
-             data: { json_data: JSON.stringify({ data: data_to_send, feature_id: id, layer_name: layer_name }) },
-             success: function(data) {
-               status_msg.empty();
-               if (data['success'] == true){
-                 status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
-               } else {
-                 status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
-               }
+             //build data to send
+             data_to_send = ''
+             for (i = 0; i < thArray.length; i++) {
+                 data_to_send = data_to_send + thArray[i] + '=' + tdArray[i].replace(/,/g , " ") + ',' // replace commas with space
              }
-           });
+
+             data_to_send = data_to_send.slice(0, -1); // remove last character
+             whole_url = "{% url 'save_edits' %}";
+             id_selector.attr("href", whole_url);
+             $.ajax({
+               type: "POST",
+               url: whole_url,
+               data: { json_data: JSON.stringify({ data: data_to_send, feature_id: id, layer_name: layer_name }) },
+               success: function(data) {
+                 status_msg.empty();
+                 if (data['success'] == true){
+                   status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
+                 } else {
+                   status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
+                 }
+               }
+             });
+            }
 
         } else{
 
@@ -273,6 +294,27 @@
       $('#tabContent_add_geom').show();
       $('.tab-content-add-map').show();
     });
+
+
+    $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+    $("#button-toggle").click(function() {
+
+
+      $(this).toggleClass("clicked");
+      if ($("#button-toggle").hasClass("clicked")) {
+        $("#button-toggle").css({ "background-color": "#3276b1", "border-color": "#3276b1"  });
+        $('#add_data_div').show();
+        add_data.fnAdjustColumnSizing();
+
+
+      }  else {
+        $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
+        $('#add_data_div').hide();
+      }
+
+    });
+
+
   });
 
   // change color of toggle button on click
