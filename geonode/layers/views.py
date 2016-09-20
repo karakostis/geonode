@@ -869,7 +869,8 @@ def layer_create(request, template='layers/layer_create.html'):
 
                     # Create layer in geoserver
                     sld_style = 'polygon_style.sld'
-                    _create_geoserver_geonode_layer(new_table, sld_style, title, the_user)
+                    permissions = "something"
+                    _create_geoserver_geonode_layer(new_table, sld_style, title, the_user, permissions)
 
                     ctx['success'] = True
 
@@ -922,7 +923,8 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 create_empty_layer_data = form_empty_layer.cleaned_data
                 title = create_empty_layer_data['empty_layer_name']
-                print ("title:", create_empty_layer_data['empty_layer_name'])
+                permissions = form_empty_layer.cleaned_data["permissions_json"]
+
                 table_name = (create_empty_layer_data['empty_layer_name'].lower()).replace(" ", "_")
                 # check table name for special characters
                 if not re.match("^[\w\d_]+$", table_name) or table_name[0].isdigit():
@@ -1001,7 +1003,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 }
                 sld_style = available_sld_styles[table_geom]
                 # create geoserver and geonode layer
-                _create_geoserver_geonode_layer(table_name, sld_style, title, the_user)
+                _create_geoserver_geonode_layer(table_name, sld_style, title, the_user, permissions)
 
                 ctx['success'] = True
                 if ctx['success']:
@@ -1025,7 +1027,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
 
 
-def _create_geoserver_geonode_layer(new_table, sld_type, title, the_user):
+def _create_geoserver_geonode_layer(new_table, sld_type, title, the_user, permissions):
     # Create the Layer in GeoServer from the table
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
@@ -1059,11 +1061,29 @@ def _create_geoserver_geonode_layer(new_table, sld_type, title, the_user):
         layer = cat.get_layer(new_table)
         layer.default_style = style
         cat.save(layer)
-
+        print ("new_table:", new_table)
         gs_slurp(owner=the_user, filter=new_table)
+        print ("new_table:", new_table)
         from geonode.base.models import ResourceBase
-        layer = ResourceBase.objects.get(title=new_table)
+        layer = ResourceBase.objects.get(title=title)
+        print ("new_table:", new_table)
         geoserver_post_save(layer, ResourceBase)
+
+        print ("new_table:", new_table)
+        # assign permissions for this layer
+        '''
+        layer = Layer.objects.get(
+            name=new_table
+        )
+        '''
+        print ("layer", layer)
+        print ("permissions:", permissions)
+        permissions_dict = json.loads(permissions)  # needs to be dictionary
+        if permissions_dict is not None and len(permissions_dict.keys()) > 0:
+            print ("not null")
+            layer.set_permissions(permissions_dict)
+            print ("not null")
+
 
     except Exception as e:
         msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))

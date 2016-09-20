@@ -366,6 +366,7 @@ def gs_slurp(
        It returns a list of dictionaries with the name of the layer,
        the result of the operation and the errors and traceback if it failed.
     """
+    
     if console is None:
         console = open(os.devnull, 'w')
 
