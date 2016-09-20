@@ -172,14 +172,13 @@ class PermissionLevelMixin(object):
                 ]
         }
         """
-        print ("test1")
         remove_object_permissions(self)
-        
+
         if 'users' in perm_spec and "AnonymousUser" in perm_spec['users']:
             anonymous_group = Group.objects.get(name='anonymous')
             for perm in perm_spec['users']['AnonymousUser']:
                 assign_perm(perm, anonymous_group, self.get_self_resource())
-        print ("test2")
+
         # TODO refactor code here
         if 'users' in perm_spec:
             for user, perms in perm_spec['users'].items():

@@ -318,46 +318,51 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     workspace, name = layers_names.split(':')
     context_dict["layer_name"] = json.dumps(layers_names)
 
-    # get type of layer (raster or vector)
-    cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
-    resource = cat.get_resource(name, workspace=workspace)
-    if (type(resource).__name__ == 'Coverage'):
-        context_dict["layer_type"] = "raster"
-    elif (type(resource).__name__ == 'FeatureType'):
-        context_dict["layer_type"] = "vector"
+    try:
+        # get type of layer (raster or vector)
+        cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+        resource = cat.get_resource(name, workspace=workspace)
+        if (type(resource).__name__ == 'Coverage'):
+            context_dict["layer_type"] = "raster"
+        elif (type(resource).__name__ == 'FeatureType'):
+            context_dict["layer_type"] = "vector"
 
-        # get layer's attributes with display_order gt 0
-        attr_to_display = layer.attribute_set.filter(display_order__gt=0)
-        layers_attributes = []
-        for values in attr_to_display.values('attribute'):
-            layers_attributes.append(values['attribute'])
+            # get layer's attributes with display_order gt 0
+            attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+            layers_attributes = []
+            for values in attr_to_display.values('attribute'):
+                layers_attributes.append(values['attribute'])
 
-        location = "{location}{service}".format(** {
-            'location': settings.OGC_SERVER['default']['LOCATION'],
-            'service': 'wms',
-        })
+            location = "{location}{service}".format(** {
+                'location': settings.OGC_SERVER['default']['LOCATION'],
+                'service': 'wms',
+            })
 
-        # get schema for specific layer
-        wfs = WebFeatureService(location, version='1.1.0')
-        schema = wfs.get_schema(name)
+            # get schema for specific layer
+            wfs = WebFeatureService(location, version='1.1.0')
+            schema = wfs.get_schema(name)
 
-        if 'the_geom' in schema['properties']:
-            schema['properties'].pop('the_geom', None)
-        elif 'geom' in schema['properties']:
-            schema['properties'].pop("geom", None)
+            if 'the_geom' in schema['properties']:
+                schema['properties'].pop('the_geom', None)
+            elif 'geom' in schema['properties']:
+                schema['properties'].pop("geom", None)
 
-        # filter the schema dict based on the values of layers_attributes
-        layer_attributes_schema = []
-        for key in schema['properties'].keys():
-            if key in layers_attributes:
-                layer_attributes_schema.append(key)
-            else:
-                schema['properties'].pop(key, None)
+            # filter the schema dict based on the values of layers_attributes
+            layer_attributes_schema = []
+            for key in schema['properties'].keys():
+                if key in layers_attributes:
+                    layer_attributes_schema.append(key)
+                else:
+                    schema['properties'].pop(key, None)
 
-        filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
+            filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
 
-        context_dict["schema"] = schema
-        context_dict["filtered_attributes"] = filtered_attributes
+            context_dict["schema"] = schema
+            context_dict["filtered_attributes"] = filtered_attributes
+
+    except:
+        print "Possible error with OWSLib. Turning all available properties to string"
+
 
     return render_to_response(template, RequestContext(request, context_dict))
 
@@ -822,6 +827,7 @@ def layer_create(request, template='layers/layer_create.html'):
             if form_csv_layer.is_valid():
                 try:
                     title = form_csv_layer.cleaned_data["title"]
+                    permissions = form_csv_layer.cleaned_data["permissions_json"]
 
                     layer_based_info = {
                         "1": {
@@ -869,7 +875,6 @@ def layer_create(request, template='layers/layer_create.html'):
 
                     # Create layer in geoserver
                     sld_style = 'polygon_style.sld'
-                    permissions = "something"
                     _create_geoserver_geonode_layer(new_table, sld_style, title, the_user, permissions)
 
                     ctx['success'] = True
@@ -1061,28 +1066,16 @@ def _create_geoserver_geonode_layer(new_table, sld_type, title, the_user, permis
         layer = cat.get_layer(new_table)
         layer.default_style = style
         cat.save(layer)
-        print ("new_table:", new_table)
         gs_slurp(owner=the_user, filter=new_table)
-        print ("new_table:", new_table)
+
         from geonode.base.models import ResourceBase
         layer = ResourceBase.objects.get(title=title)
-        print ("new_table:", new_table)
         geoserver_post_save(layer, ResourceBase)
 
-        print ("new_table:", new_table)
         # assign permissions for this layer
-        '''
-        layer = Layer.objects.get(
-            name=new_table
-        )
-        '''
-        print ("layer", layer)
-        print ("permissions:", permissions)
         permissions_dict = json.loads(permissions)  # needs to be dictionary
         if permissions_dict is not None and len(permissions_dict.keys()) > 0:
-            print ("not null")
             layer.set_permissions(permissions_dict)
-            print ("not null")
 
 
     except Exception as e:
@@ -1178,8 +1171,7 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     wfs = WebFeatureService(location, version='1.1.0')
     schema = wfs.get_schema(name)
-    print schema
-
+    
     # acquire the geometry of layer - requires improvement
     geom_dict = {
         'Point': 'Point',

@@ -261,9 +261,8 @@ class UploadCSVForm(forms.Form):
         ('3', 'Layer by Province'),
     )
     layer_type = forms.ChoiceField(choices=LAYER_TYPE, required=True)
-
     csv = forms.FileField(required=True)
-
+    permissions_json = forms.CharField(max_length=500, widget=forms.HiddenInput()) #  stores the permissions json from the permissions form
 
     def write_files(self):
 
@@ -308,7 +307,7 @@ class UploadEmptyLayerForm(forms.Form):
 
     geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
     total_input_fields = forms.CharField(widget=forms.HiddenInput())
-    permissions_json = forms.CharField(max_length=500) #  stores the permissions json from the permissions form
+    permissions_json = forms.CharField(max_length=500, widget=forms.HiddenInput()) #  stores the permissions json from the permissions form
 
     def __init__(self, *args, **kwargs):
 
