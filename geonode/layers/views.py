@@ -1171,7 +1171,7 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     wfs = WebFeatureService(location, version='1.1.0')
     schema = wfs.get_schema(name)
-    
+
     # acquire the geometry of layer - requires improvement
     geom_dict = {
         'Point': 'Point',
@@ -1213,6 +1213,36 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
 
     return render_to_response(template, RequestContext(request, context_dict))
+
+
+
+@login_required
+def delete_edits(request, template='layers/layer_edit_data.html'):
+
+    data_dict = json.loads(request.POST.get('json_data'))
+    feature_id = data_dict['feature_id']
+    layer_name = data_dict['layer_name']
+
+    xml_path = "layers/wfs_delete_row.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'feature_id': feature_id})).strip()
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    headers = {'Content-Type': 'application/xml'}  # set what your server accepts
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    if (status_code != 200):
+        message = "Failed to delete row."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "Row was deleted successfully."
+        success = True
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
+    return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
 
 
 @login_required

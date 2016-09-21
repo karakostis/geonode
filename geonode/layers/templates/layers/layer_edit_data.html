@@ -119,7 +119,7 @@
         // add id (fid from table) and edit button
         layer_name = feature_properties[i]['id'].split(".")[0];
         row_id = feature_properties[i]['id'].split(".")[1];
-        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit Attributes" %}</button></br><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Edit Geometry" %}</button></br><button id="fid__cancel__' + row_id + '"  class="btn btn-info btn-sm _cancel_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Cancel" %}</button>';
+        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit Attributes" %}</button></br><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Edit Geometry" %}</button></br><button id="fid__cancel__' + row_id + '"  class="btn btn-info btn-sm _cancel_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Cancel" %}</button></br><button id="fid__delete__' + row_id + '" class="btn btn-info btn-sm _delete_btn" data-toggle="modal" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Delete Row" %}</button>';
         row_values.push(edit_btn);
 
         for (var key in feature_properties[i]['properties']) {
@@ -172,12 +172,35 @@
     $(document.body).on("click", "._cancel_btn",function(e){
       var clicked_btn = $(this);
       discard_changes(clicked_btn, layer_data)
-
     });
+
+    // functionality to delete a row
+    $(document.body).on("click", "._delete_btn",function(e){
+      var status_msg = $("#status_msg");
+      var clicked_btn = $(this);
+      if (confirm("Are you sure you want to delete this row?")){
+        var feature_id = $(clicked_btn).data('fid');
+        whole_url = "{% url 'delete_edits' %}";
+        $.ajax({
+          type: "POST",
+          url: whole_url,
+          data: { json_data: JSON.stringify({ feature_id: feature_id, layer_name: layer_name }) },
+          success: function(data) {
+            status_msg.empty();
+            if (data['success'] == true){
+              status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
+              location.reload();
+            } else {
+              status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
+            }
+          }
+        });
+      }
+    });
+
 
     // functionality to edit non spatial values
     $(document.body).on("click", "._edit_save_btn",function(e){
-
       // add attribute to make cells editable for this row
       $(this).closest('td').siblings().attr('contenteditable', 'true');
       $(this).toggleClass("clicked");
