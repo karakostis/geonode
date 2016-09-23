@@ -944,7 +944,7 @@ def layer_create(request, template='layers/layer_create.html'):
 
                 create_empty_layer_data_lngth = (len(create_empty_layer_data) - 3)/2  # need only field names and types divided by 2
                 # check if user has added at least one column
-                if (int(create_empty_layer_data['total_input_fields']) <= 3):
+                if (int(create_empty_layer_data['total_input_fields']) < 1):
                     status_code = '400'
                     if status_code == '400':
                         errormsgs_val = "You haven't added any additional columns. At least one column is required."
