@@ -99,6 +99,7 @@
                 status_msg.empty();
                 if (data['success'] == true){
                   status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
+                  location.reload();
                 } else {
                   status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
                 }

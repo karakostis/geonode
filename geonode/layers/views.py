@@ -341,7 +341,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             # get schema for specific layer
             wfs = WebFeatureService(location, version='1.1.0')
             schema = wfs.get_schema(name)
-
             if 'the_geom' in schema['properties']:
                 schema['properties'].pop('the_geom', None)
             elif 'geom' in schema['properties']:
@@ -871,7 +870,7 @@ def layer_create(request, template='layers/layer_create.html'):
                     if status_code == '400':
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv'), "is_layer": True}))
 
                     # Create layer in geoserver
                     sld_style = 'polygon_style.sld'
@@ -905,7 +904,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
-                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_csv')}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_csv'), "is_layer": True}))
 
 
         elif 'emptylayerbtn' in request.POST:
@@ -937,22 +936,21 @@ def layer_create(request, template='layers/layer_create.html'):
                     errormsgs_val = "Not valid name for layer name. Use only characters or numbers for a name. Name can not start with a number."
                     errormsgs.append(errormsgs_val)
                     ctx['errormsgs'] = errormsgs
-                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                 table_geom = create_empty_layer_data['geom_type']
 
                 table_fields_list = ['fid serial NOT NULL']
 
                 create_empty_layer_data_lngth = (len(create_empty_layer_data) - 3)/2  # need only field names and types divided by 2
-
                 # check if user has added at least one column
-                if (len(create_empty_layer_data) <= 3):
+                if (int(create_empty_layer_data['total_input_fields']) <= 3):
                     status_code = '400'
                     if status_code == '400':
                         errormsgs_val = "You haven't added any additional columns. At least one column is required."
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                 field_types = []
                 for key in create_empty_layer_data:
@@ -967,7 +965,7 @@ def layer_create(request, template='layers/layer_create.html'):
                                 errormsgs_val = "Not valid naming for attributes. Use only characters or numbers for a name. Name can not start with a number."
                                 errormsgs.append(errormsgs_val)
                                 ctx['errormsgs'] = errormsgs
-                                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                             field_type_short = create_empty_layer_data['field_type_%s' % i] # get field type for this field name
 
@@ -984,7 +982,7 @@ def layer_create(request, template='layers/layer_create.html'):
                         errormsgs_val = "There are one or more columns with the same name."
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                 geom = "the_geom geometry(%s,4326)" % table_geom
                 table_fields_list.append(geom)
@@ -998,7 +996,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 if status_code == '400':
                     errormsgs.append(errormsgs_val)
                     ctx['errormsgs'] = errormsgs
-                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
 
                 available_sld_styles = {
@@ -1028,7 +1026,7 @@ def layer_create(request, template='layers/layer_create.html'):
                 ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
-                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
 
 
