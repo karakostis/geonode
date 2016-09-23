@@ -256,6 +256,7 @@
 
             // make a WFS request
             var geoJsonUrl = data_from_view_url + 'geonode/ows';
+            console.log(geoJsonUrl)
             var defaultParameters = {
               service: 'WFS',
               version: '1.1.0',
@@ -271,7 +272,7 @@
             // url to be used when on staging/production
             var context_path = "geonode/ows"
             var url_string = base_url + context_path + L.Util.getParamString(parameters);
-            //var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
+            var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
             var drawnItems = new L.FeatureGroup().addTo(map);
             if (layer_geom == 'Point'){
               var drawControl = new L.Control.Draw({

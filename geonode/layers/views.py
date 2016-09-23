@@ -339,8 +339,11 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             })
 
             # get schema for specific layer
-            wfs = WebFeatureService(location, version='1.1.0')
-            schema = wfs.get_schema(name)
+            from owslib.feature.schema import get_schema
+            username = 'admin'
+            password = 'admin'
+            schema = get_schema(location, name, username=username, password=password)
+
             if 'the_geom' in schema['properties']:
                 schema['properties'].pop('the_geom', None)
             elif 'geom' in schema['properties']:
@@ -382,8 +385,9 @@ def load_layer_data(request, template='layers/layer_detail.html'):
     })
 
     try:
-
-        wfs = WebFeatureService(location, version='1.1.0')
+        username = 'admin'
+        password = 'admin'
+        wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
         response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
         features_response = json.dumps(json.loads(response.read()))
@@ -1167,8 +1171,12 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     for values in attr_to_display.values('attribute'):
         layers_attributes.append(values['attribute'])
 
-    wfs = WebFeatureService(location, version='1.1.0')
-    schema = wfs.get_schema(name)
+    username = 'admin'
+    password = 'admin'
+    wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
+
+    from owslib.feature.schema import get_schema
+    schema = get_schema(location, name, username=username, password=password)
 
     # acquire the geometry of layer - requires improvement
     geom_dict = {
