@@ -4,7 +4,7 @@
   xmlns:geonode="{{ geonode_url }}">
   <wfs:Insert>
     <geonode:{{ layer_name }}>
-    <the_geom>
+    <{{ geometry_clm }}>
       <gml:MultiLineString srsName="http://www.opengis.net/gml/srs/epsg.xml#4326">
         <gml:lineStringMember>
           <gml:LineString>
@@ -14,7 +14,7 @@
           </gml:LineString>
         </gml:lineStringMember>
       </gml:MultiLineString>
-    </the_geom>
+    </{{ geometry_clm }}>
     {{ property_element }}
     </geonode:{{ layer_name }}>
   </wfs:Insert>

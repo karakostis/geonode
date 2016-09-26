@@ -124,10 +124,11 @@
 
           map.invalidateSize();
 
+          /*
           {% if resource.bbox_string %}
             zoom_to_box(map, [{{ resource.bbox_string }}]);
           {% endif %}
-
+          */
           {% if resource.get_tiles_url %}
             tile_layer = L.tileLayer("{{ resource.get_tiles_url|safe }}",
               {
@@ -159,7 +160,8 @@
           layer_geom = {{ layer_geom | safe }};
 
           if (add_geometry.data("clicked_btn") == '_add_data'){
-
+            $("#instructions_msg").text("Click the button on the map to add features.");
+            map.setView([0,0], 1);
             if (layer_geom == 'Polygon'){
               draw_values = [false, true, false, false, false]
             } else if (layer_geom == 'Linestring'){
@@ -249,6 +251,8 @@
             });
 
           } else {
+
+            $("#instructions_msg").text("Click the button on the map to edit features.");
             layer_name = {{ layer_name | safe }};
             base_url = {{ url | safe }};
 
@@ -256,7 +260,7 @@
 
             // make a WFS request
             var geoJsonUrl = data_from_view_url + 'geonode/ows';
-            console.log(geoJsonUrl)
+
             var defaultParameters = {
               service: 'WFS',
               version: '1.1.0',
@@ -266,7 +270,7 @@
               outputFormat: 'application/json',
               SrsName : 'EPSG:4326',
               featureId: feature_id,
-              propertyName: "the_geom"
+              //propertyName: "the_geom"
             };
             var parameters = L.Util.extend(defaultParameters);
             // url to be used when on staging/production
@@ -305,7 +309,19 @@
               success: function (response) {
                 L.geoJson(response, {
                   onEachFeature: function (feature, layer) {
+                    if (layer_geom == 'Point'){
+                      map.setView([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], 10);
+                      console.log(feature.geometry.coordinates)
+                    } else {
+                      {% if resource.bbox_string %}
+                        zoom_to_box(map, [{{ resource.bbox_string }}]);
+                      {% endif %}
+                      console.log(feature.geometry.coordinates)
+                    }
+
+
                     drawnItems.addLayer(layer);
+
                    }
                 });
               },

@@ -343,6 +343,12 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             username = settings.OGC_SERVER['default']['USER']
             password = settings.OGC_SERVER['default']['PASSWORD']
             schema = get_schema(location, name, username=username, password=password)
+            print ("schema", schema)
+
+
+            # get the name of the column which holds the geometry
+            #geomName = schema.keys()[schema.values().index('Point')] or schema.keys()[schema.values().index('MultiLineString')]
+            #print ("geomName", geomName)
 
             if 'the_geom' in schema['properties']:
                 schema['properties'].pop('the_geom', None)
@@ -1173,8 +1179,7 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     username = settings.OGC_SERVER['default']['USER']
     password = settings.OGC_SERVER['default']['PASSWORD']
-    print ("username", username)
-    print ("password", password)
+
     wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
     from owslib.feature.schema import get_schema
@@ -1281,6 +1286,8 @@ def save_edits(request, template='layers/layer_edit_data.html'):
             'feature_id': feature_id,
             'property_element': mark_safe(property_element)})).strip()
 
+    print ("xmlstr", xmlstr)
+
     headers = {'Content-Type': 'application/xml'}  # set what your server accepts
 
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
@@ -1309,17 +1316,21 @@ def save_geom_edits(request, template='layers/layer_edit_data.html'):
         'base.change_resourcebase_metadata',
         _PERMISSION_MSG_METADATA)
 
+    store_name, geometry_clm = get_store_name(layer_name)
     xml_path = "layers/wfs_edit_point_geom.xml"
     xmlstr = get_template(xml_path).render(Context({
             'layer_name': layer_name,
             'coords': coords,
-            'feature_id': feature_id})).strip()
+            'feature_id': feature_id,
+            'geometry_clm': geometry_clm})).strip()
 
     url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
     headers = {'Content-Type': 'application/xml'} # set what your server accepts
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
 
-    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name)
+    store_name, geometry_clm = get_store_name(layer_name)
+
+    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name, store_name)
     if (status_code != 200):
         message = "Error saving the geometry."
         success = False
@@ -1390,16 +1401,20 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
         coords = coords.replace(",", " ")
         xml_path = "layers/wfs_add_new_polygon.xml"
 
+    store_name, geometry_clm = get_store_name(layer_name)
     xmlstr = get_template(xml_path).render(Context({
             'geonode_url': geonode_url,
             'layer_name': layer_name,
             'coords': coords,
-            'property_element': mark_safe(property_element)})).strip()
+            'property_element': mark_safe(property_element),
+            'geometry_clm': geometry_clm})).strip()
 
     url = settings.OGC_SERVER['default']['LOCATION'] + 'geonode/wfs'
     status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
 
-    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name)
+    store_name, geometry_clm = get_store_name(layer_name)
+
+    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name, store_name)
     if (status_code != 200):
         message = "Error adding data."
         success = False
@@ -1413,12 +1428,13 @@ def save_added_row(request, template='layers/layer_edit_data.html'):
 # Used to update the BBOX of geoserver and send a see request
 # Takes as input the headers and the layer_name
 # Returns status_code of each request
-def update_bbox_and_seed(headers, layer_name):
-
+def update_bbox_and_seed(headers, layer_name, store_name):
     # Update the BBOX of layer in geoserver (use of recalculate)
-    url = settings.OGC_SERVER['default']['LOCATION'] + "rest/workspaces/geonode/datastores/uploaded/featuretypes/{layer_name}.xml?recalculate=nativebbox,latlonbbox".format(** {
+    url = settings.OGC_SERVER['default']['LOCATION'] + "rest/workspaces/geonode/datastores/{store_name}/featuretypes/{layer_name}.xml?recalculate=nativebbox,latlonbbox".format(** {
+        'store_name': store_name.strip(),
         'layer_name': layer_name
     })
+    print ("url", url)
     xmlstr = """<featureType><enabled>true</enabled></featureType>"""
     status_code_bbox = requests.put(url, headers=headers, data=xmlstr, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
 
@@ -1451,3 +1467,19 @@ def update_bbox_in_CSW(layer, layer_name):
     resources.update(bbox_x0=resource.latlon_bbox[0], bbox_x1=resource.latlon_bbox[1], bbox_y0=resource.latlon_bbox[2], bbox_y1=resource.latlon_bbox[3], csw_wkt_geometry=csw_wkt_geometry)
 
     return csw_wkt_geometry
+
+#  Returns the store name based on the workspace and the layer name
+def get_store_name(layer_name):
+    # get the name of the store
+    cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+    resource = cat.get_resource(layer_name, workspace='geonode')
+    store_name = resource.store.name
+
+    # select the name of the geometry column based on the store type
+    if (store_name == "uploaded"):
+        geometry_clm = "the_geom"
+    else:
+        geometry_clm = "shape"
+
+
+    return store_name, geometry_clm
