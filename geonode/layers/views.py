@@ -340,8 +340,8 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
             # get schema for specific layer
             from owslib.feature.schema import get_schema
-            username = 'admin'
-            password = 'admin'
+            username = settings.OGC_SERVER['default']['USER']
+            password = settings.OGC_SERVER['default']['PASSWORD']
             schema = get_schema(location, name, username=username, password=password)
 
             if 'the_geom' in schema['properties']:
@@ -385,8 +385,8 @@ def load_layer_data(request, template='layers/layer_detail.html'):
     })
 
     try:
-        username = 'admin'
-        password = 'admin'
+        username = settings.OGC_SERVER['default']['USER']
+        password = settings.OGC_SERVER['default']['PASSWORD']
         wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
         response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
@@ -1171,8 +1171,10 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     for values in attr_to_display.values('attribute'):
         layers_attributes.append(values['attribute'])
 
-    username = 'admin'
-    password = 'admin'
+    username = settings.OGC_SERVER['default']['USER']
+    password = settings.OGC_SERVER['default']['PASSWORD']
+    print ("username", username)
+    print ("password", password)
     wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
     from owslib.feature.schema import get_schema
