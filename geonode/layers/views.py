@@ -343,6 +343,12 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             username = settings.OGC_SERVER['default']['USER']
             password = settings.OGC_SERVER['default']['PASSWORD']
             schema = get_schema(location, name, username=username, password=password)
+            print ("schema", schema)
+
+
+            # get the name of the column which holds the geometry
+            #geomName = schema.keys()[schema.values().index('Point')] or schema.keys()[schema.values().index('MultiLineString')]
+            #print ("geomName", geomName)
 
             if 'the_geom' in schema['properties']:
                 schema['properties'].pop('the_geom', None)
@@ -1173,8 +1179,7 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     username = settings.OGC_SERVER['default']['USER']
     password = settings.OGC_SERVER['default']['PASSWORD']
-    print ("username", username)
-    print ("password", password)
+
     wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
     from owslib.feature.schema import get_schema

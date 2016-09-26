@@ -256,7 +256,7 @@
 
             // make a WFS request
             var geoJsonUrl = data_from_view_url + 'geonode/ows';
-            console.log(geoJsonUrl)
+
             var defaultParameters = {
               service: 'WFS',
               version: '1.1.0',
@@ -266,7 +266,7 @@
               outputFormat: 'application/json',
               SrsName : 'EPSG:4326',
               featureId: feature_id,
-              propertyName: "the_geom"
+              //propertyName: "the_geom"
             };
             var parameters = L.Util.extend(defaultParameters);
             // url to be used when on staging/production

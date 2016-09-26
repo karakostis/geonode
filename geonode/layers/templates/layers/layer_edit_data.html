@@ -253,7 +253,9 @@
                }
              } else if (th_data_type[i] !== 'string' && !isNaN(tdArray[i])){
                data_validation = true;
-             } else{
+             } else if (th_data_type[i] == 'dateTime'){
+               data_validation = true;
+             }else{
                data_validation = false;
                data_type = th_data_type[i];
                column_name = thArray[i];
