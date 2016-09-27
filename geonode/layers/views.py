@@ -1476,7 +1476,7 @@ def get_store_name(layer_name):
     store_name = resource.store.name
 
     # select the name of the geometry column based on the store type
-    if ("store_name" == "uploaded"):
+    if (store_name == "uploaded"):
         geometry_clm = "the_geom"
     else:
         geometry_clm = "shape"
