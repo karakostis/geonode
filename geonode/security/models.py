@@ -172,7 +172,6 @@ class PermissionLevelMixin(object):
                 ]
         }
         """
-
         remove_object_permissions(self)
 
         if 'users' in perm_spec and "AnonymousUser" in perm_spec['users']:
@@ -221,13 +220,11 @@ def remove_object_permissions(instance):
         If is a layer removes the layer specific permissions then the resourcebase permissions
     """
     from guardian.models import UserObjectPermission, GroupObjectPermission
-
     if hasattr(instance, "layer"):
         UserObjectPermission.objects.filter(content_type=ContentType.objects.get_for_model(instance),
                                             object_pk=instance.id).delete()
         GroupObjectPermission.objects.filter(content_type=ContentType.objects.get_for_model(instance),
                                              object_pk=instance.id).delete()
-
     resource = instance.get_self_resource()
     UserObjectPermission.objects.filter(content_type=ContentType.objects.get_for_model(resource),
                                         object_pk=instance.id).delete()

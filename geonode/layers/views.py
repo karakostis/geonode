@@ -25,6 +25,7 @@ import csv
 import logging
 import shutil
 import traceback
+import requests
 import psycopg2
 from osgeo import ogr
 from unidecode import unidecode
@@ -39,9 +40,11 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.conf import settings
-from django.template import RequestContext
+from django.template import Context, RequestContext
+from django.template.loader import get_template
 from django.utils.translation import ugettext as _
 from django.utils import simplejson as json
+from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from django.template.defaultfilters import slugify
 from django.forms.models import inlineformset_factory
@@ -230,9 +233,6 @@ def layer_upload(request, template='upload/layer_upload.html'):
             mimetype='application/json',
             status=status_code)
 
-
-
-
 def layer_detail(request, layername, template='layers/layer_detail.html'):
     layer = _resolve_layer(
         request,
@@ -316,14 +316,9 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
     layers_names = layer.typename
     workspace, name = layers_names.split(':')
-
-    location = "{location}{service}".format(** {
-        'location': settings.OGC_SERVER['default']['LOCATION'],
-        'service': 'wms',
-    })
+    context_dict["layer_name"] = json.dumps(layers_names)
 
     try:
-
         # get type of layer (raster or vector)
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         resource = cat.get_resource(name, workspace=workspace)
@@ -338,9 +333,22 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             for values in attr_to_display.values('attribute'):
                 layers_attributes.append(values['attribute'])
 
+            location = "{location}{service}".format(** {
+                'location': settings.OGC_SERVER['default']['LOCATION'],
+                'service': 'wms',
+            })
+
             # get schema for specific layer
-            wfs = WebFeatureService(location, version='1.1.0')
-            schema = wfs.get_schema(name)
+            from owslib.feature.schema import get_schema
+            username = settings.OGC_SERVER['default']['USER']
+            password = settings.OGC_SERVER['default']['PASSWORD']
+            schema = get_schema(location, name, username=username, password=password)
+            print ("schema", schema)
+
+
+            # get the name of the column which holds the geometry
+            #geomName = schema.keys()[schema.values().index('Point')] or schema.keys()[schema.values().index('MultiLineString')]
+            #print ("geomName", geomName)
 
             if 'the_geom' in schema['properties']:
                 schema['properties'].pop('the_geom', None)
@@ -358,34 +366,61 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
 
             context_dict["schema"] = schema
-            response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
+            context_dict["filtered_attributes"] = filtered_attributes
 
-            features_response = json.dumps(json.loads(response.read()))
-            decoded = json.loads(features_response)
-            decoded_features = decoded['features']
-
-            properties = {}
-            for key in decoded_features[0]['properties']:
-                properties[key] = []
-
-            # loop the dictionary based on the values on the list and add the properties
-            # in the dictionary (if doesn't exist) together with the value
-
-            for i in range(len(decoded_features)):
-                for key, value in decoded_features[i]['properties'].iteritems():
-                    if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
-                        properties[key].append(value)
-
-            for key in properties:
-                properties[key].sort()
-
-            context_dict["feature_properties"] = json.dumps(properties)
-
-            print "OWSLib worked as expected"
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
 
+
     return render_to_response(template, RequestContext(request, context_dict))
+
+
+# Loads the data using the OWS lib when the "Do you want to filter it" button is clicked.
+def load_layer_data(request, template='layers/layer_detail.html'):
+
+    context_dict = {}
+    data_dict = json.loads(request.POST.get('json_data'))
+    layername = data_dict['layer_name']
+    filtered_attributes = data_dict['filtered_attributes']
+
+    workspace, name = layername.split(':')
+
+    location = "{location}{service}".format(** {
+        'location': settings.OGC_SERVER['default']['LOCATION'],
+        'service': 'wms',
+    })
+
+    try:
+        username = settings.OGC_SERVER['default']['USER']
+        password = settings.OGC_SERVER['default']['PASSWORD']
+        wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
+
+        response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
+        features_response = json.dumps(json.loads(response.read()))
+        decoded = json.loads(features_response)
+        decoded_features = decoded['features']
+
+        properties = {}
+        for key in decoded_features[0]['properties']:
+            properties[key] = []
+
+        # loop the dictionary based on the values on the list and add the properties
+        # in the dictionary (if doesn't exist) together with the value
+
+        for i in range(len(decoded_features)):
+            for key, value in decoded_features[i]['properties'].iteritems():
+                if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
+                    properties[key].append(value)
+        for key in properties:
+            properties[key].sort()
+        context_dict["feature_properties"] = properties
+        print "OWSLib worked as expected"
+
+    except:
+        print "Possible error with OWSLib. Turning all available properties to string"
+
+    return HttpResponse(json.dumps(context_dict), mimetype="application/json")
+
 
 
 @login_required
@@ -405,7 +440,6 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
 
     poc = layer.poc
     metadata_author = layer.metadata_author
-
     if request.method == "POST":
         layer_form = LayerForm(request.POST, instance=layer, prefix="resource")
         attribute_form = layer_attribute_set(
@@ -431,6 +465,7 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
 
     if request.method == "POST" and layer_form.is_valid(
     ) and attribute_form.is_valid() and category_form.is_valid():
+
         new_poc = layer_form.cleaned_data['poc']
         new_author = layer_form.cleaned_data['metadata_author']
         new_keywords = layer_form.cleaned_data['keywords']
@@ -483,6 +518,7 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
             layer.keywords.clear()
             layer.keywords.add(*new_keywords)
             the_layer = layer_form.save()
+
             up_sessions = UploadSession.objects.filter(layer=the_layer.id)
             if up_sessions.count() > 0 and up_sessions[0].user != the_layer.owner:
                 up_sessions.update(user=the_layer.owner)
@@ -743,6 +779,7 @@ def layer_create(request, template='layers/layer_create.html'):
     if request.method == 'GET':
         ctx = {
             'charsets': CHARSETS,
+            "is_layer": True,
         }
 
         # Get the values for the dropdown menus of regions and provinces
@@ -789,7 +826,7 @@ def layer_create(request, template='layers/layer_create.html'):
         ctx['countries'] = countries
 
         if 'fromlayerbtn' in request.POST:
-
+            the_user = request.user
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, request.FILES)
 
@@ -799,25 +836,26 @@ def layer_create(request, template='layers/layer_create.html'):
             if form_csv_layer.is_valid():
                 try:
                     title = form_csv_layer.cleaned_data["title"]
+                    permissions = form_csv_layer.cleaned_data["permissions_json"]
 
                     layer_based_info = {
                         "1": {
                             "geom_table": "wld_bnd_adm0_gaul_2015 AS g",
                             "id": "adm0_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.wkb_geometry",
-                            "geom": "wkb_geometry"
+                            "columns": "g.adm0_code, g.adm0_name, g.the_geom",
+                            "geom": "the_geom"
                             },
                         "2": {
                             "geom_table": "wld_bnd_adm1_gaul_2015 AS g",
                             "id": "adm1_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.geom",
-                            "geom": "geom"
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.the_geom",
+                            "geom": "the_geom"
                             },
                         "3": {
                             "geom_table": "wld_bnd_adm2_gaul_2015 AS g",
                             "id": "adm2_code",
-                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.geom",
-                            "geom": "geom"
+                            "columns": "g.adm0_code, g.adm0_name, g.adm1_code, g.adm1_name, g.adm2_code, g.adm2_name, g.the_geom",
+                            "geom": "the_geom"
                             }
                     }
 
@@ -829,8 +867,9 @@ def layer_create(request, template='layers/layer_create.html'):
                     geom_table_columns = layer_based_info[layer_type[0]]['columns']
                     selected_country = form_csv_layer.cleaned_data["selected_country"]
                     cntr_name = slugify(selected_country[0].replace(" ", "_"))
-                    table_name_temp = "%s_%s_temp" % (cntr_name, title)
-                    table_name = "%s_%s" % (cntr_name, title)
+                    slugified_title = slugify(title.replace(" ", "_"))
+                    table_name_temp = "%s_%s_temp" % (cntr_name, slugified_title)
+                    table_name = "%s_%s" % (cntr_name, slugified_title)
                     table_name_temp = table_name_temp
                     new_table = table_name
 
@@ -841,11 +880,11 @@ def layer_create(request, template='layers/layer_create.html'):
                     if status_code == '400':
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_csv'), "is_layer": True}))
 
-                    #  create layer in geoserver
+                    # Create layer in geoserver
                     sld_style = 'polygon_style.sld'
-                    _create_geoserver_geonode_layer(new_table, sld_style)
+                    _create_geoserver_geonode_layer(new_table, sld_style, title, the_user, permissions)
 
                     ctx['success'] = True
 
@@ -875,10 +914,12 @@ def layer_create(request, template='layers/layer_create.html'):
                 ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
-                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_csv')}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_csv'), "is_layer": True}))
 
 
         elif 'emptylayerbtn' in request.POST:
+
+            the_user = request.user
             ctx = {}
             form_csv_layer = UploadCSVForm(request.POST, request.FILES)
             form_empty_layer = UploadEmptyLayerForm(request.POST, extra=request.POST.get('total_input_fields'))
@@ -895,6 +936,8 @@ def layer_create(request, template='layers/layer_create.html'):
                 }
 
                 create_empty_layer_data = form_empty_layer.cleaned_data
+                title = create_empty_layer_data['empty_layer_name']
+                permissions = form_empty_layer.cleaned_data["permissions_json"]
 
                 table_name = (create_empty_layer_data['empty_layer_name'].lower()).replace(" ", "_")
                 # check table name for special characters
@@ -903,22 +946,21 @@ def layer_create(request, template='layers/layer_create.html'):
                     errormsgs_val = "Not valid name for layer name. Use only characters or numbers for a name. Name can not start with a number."
                     errormsgs.append(errormsgs_val)
                     ctx['errormsgs'] = errormsgs
-                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                 table_geom = create_empty_layer_data['geom_type']
 
                 table_fields_list = ['fid serial NOT NULL']
 
                 create_empty_layer_data_lngth = (len(create_empty_layer_data) - 3)/2  # need only field names and types divided by 2
-
                 # check if user has added at least one column
-                if (len(create_empty_layer_data) <= 3):
+                if (int(create_empty_layer_data['total_input_fields']) < 1):
                     status_code = '400'
                     if status_code == '400':
                         errormsgs_val = "You haven't added any additional columns. At least one column is required."
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                 field_types = []
                 for key in create_empty_layer_data:
@@ -933,7 +975,7 @@ def layer_create(request, template='layers/layer_create.html'):
                                 errormsgs_val = "Not valid naming for attributes. Use only characters or numbers for a name. Name can not start with a number."
                                 errormsgs.append(errormsgs_val)
                                 ctx['errormsgs'] = errormsgs
-                                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                             field_type_short = create_empty_layer_data['field_type_%s' % i] # get field type for this field name
 
@@ -950,7 +992,7 @@ def layer_create(request, template='layers/layer_create.html'):
                         errormsgs_val = "There are one or more columns with the same name."
                         errormsgs.append(errormsgs_val)
                         ctx['errormsgs'] = errormsgs
-                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                        return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
                 geom = "the_geom geometry(%s,4326)" % table_geom
                 table_fields_list.append(geom)
@@ -964,17 +1006,17 @@ def layer_create(request, template='layers/layer_create.html'):
                 if status_code == '400':
                     errormsgs.append(errormsgs_val)
                     ctx['errormsgs'] = errormsgs
-                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer')}))
+                    return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'errormsgs': errormsgs, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
 
                 available_sld_styles = {
-                    'MULTIPOINT': 'point_style.sld',
+                    'POINT': 'point_style.sld',
                     'MULTILINESTRING': 'line_style.sld',
                     'MULTIPOLYGON': 'polygon_style.sld',
                 }
                 sld_style = available_sld_styles[table_geom]
                 # create geoserver and geonode layer
-                _create_geoserver_geonode_layer(table_name, sld_style)
+                _create_geoserver_geonode_layer(table_name, sld_style, title, the_user, permissions)
 
                 ctx['success'] = True
                 if ctx['success']:
@@ -987,26 +1029,28 @@ def layer_create(request, template='layers/layer_create.html'):
                             args=(
                                 layer,
                             )))
-
             else:
-
                 for e in form_empty_layer.errors.values():
                     errormsgs.append([escape(v) for v in e])
 
                 ctx['errors'] = form_csv_layer.errors
                 ctx['errormsgs'] = errormsgs
                 ctx['success'] = False
-                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer')}))
+                return render_to_response(template, RequestContext(request, {'form_csv_layer': form_csv_layer, 'form_empty_layer': form_empty_layer, 'countries': countries, 'status_msg': json.dumps('400_empty_layer'), "is_layer": True}))
 
 
 
-def _create_geoserver_geonode_layer(new_table, sld_type):
+def _create_geoserver_geonode_layer(new_table, sld_type, title, the_user, permissions):
     # Create the Layer in GeoServer from the table
-
     try:
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         ds = cat.get_store("uploaded")  # name of store in WFP-Geonode
         cat.publish_featuretype(new_table, ds, "EPSG:4326", srs="EPSG:4326")
+
+        # changing the layer's title in the title set by the user
+        resource = cat.get_resource(new_table, workspace="geonode")
+        resource.title = title
+        cat.save(resource)
 
     except Exception as e:
 
@@ -1022,19 +1066,25 @@ def _create_geoserver_geonode_layer(new_table, sld_type):
             'sld_type': sld_type
         })
 
-        import requests
         r = requests.get(link_to_sld)
-        sld_polygon = r.text
-        cat.create_style(new_table, sld_polygon, overwrite=True)
+        sld = r.text
+        sld = sld.replace("name_of_layer", new_table)  # "name_of_layer" is set in the predefined sld in geoserver (polygon_style, line_style, point_style)
+        cat.create_style(new_table, sld, overwrite=True)
         style = cat.get_style(new_table)
         layer = cat.get_layer(new_table)
         layer.default_style = style
         cat.save(layer)
+        gs_slurp(owner=the_user, filter=new_table)
 
-        gs_slurp(filter=new_table)
         from geonode.base.models import ResourceBase
-        layer = ResourceBase.objects.get(title=new_table)
+        layer = ResourceBase.objects.get(title=title)
         geoserver_post_save(layer, ResourceBase)
+
+        # assign permissions for this layer
+        permissions_dict = json.loads(permissions)  # needs to be dictionary
+        if permissions_dict is not None and len(permissions_dict.keys()) > 0:
+            layer.set_permissions(permissions_dict)
+
 
     except Exception as e:
         msg = "Error creating GeoNode layer for %s: %s" % (new_table, str(e))
@@ -1103,3 +1153,333 @@ def download_csv(request):
             fields = [field_1, field_2]
             writer.writerows([fields])
         return response
+
+@login_required
+def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
+    context_dict = {}
+    layer = _resolve_layer(
+        request,
+        layername,
+        'base.view_resourcebase',
+        _PERMISSION_MSG_VIEW)
+
+    layers_names = layer.typename
+    workspace, name = layers_names.split(':')
+
+    location = "{location}{service}".format(** {
+        'location': settings.OGC_SERVER['default']['LOCATION'],
+        'service': 'wms',
+    })
+
+    # get layer's attributes with display_order gt 0
+    attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+    layers_attributes = []
+    for values in attr_to_display.values('attribute'):
+        layers_attributes.append(values['attribute'])
+
+    username = settings.OGC_SERVER['default']['USER']
+    password = settings.OGC_SERVER['default']['PASSWORD']
+
+    wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
+
+    from owslib.feature.schema import get_schema
+    schema = get_schema(location, name, username=username, password=password)
+
+    # acquire the geometry of layer - requires improvement
+    geom_dict = {
+        'Point': 'Point',
+        'MultiPoint': 'Point',
+        'MultiSurfacePropertyType': 'Polygon',
+        'MultiLineString': 'Linestring'
+    }
+    geom_type = schema.get('geometry') or schema['properties'].get('the_geom')
+    context_dict["layer_geom"] = json.dumps(geom_dict.get(geom_type, 'unknown'))
+
+    schema.pop("geometry")
+    # remove the_geom/geom parameter
+    if 'the_geom' in schema['properties']:
+        schema['properties'].pop('the_geom', None)
+
+    # filter the schema dict based on the values of layers_attributes
+    layer_attributes_schema = []
+    for key in schema['properties'].keys():
+        if key in layers_attributes:
+            layer_attributes_schema.append(key)
+        else:
+            schema['properties'].pop(key, None)
+
+    filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
+
+    context_dict["schema"] = schema
+
+    response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
+
+    features_response = json.dumps(json.loads(response.read()))
+    decoded = json.loads(features_response)
+    decoded_features = decoded['features']
+
+    context_dict["feature_properties"] = json.dumps(decoded_features)
+    context_dict["resource"] = layer
+    context_dict["layer_name"] = json.dumps(name)
+    context_dict["url"] = json.dumps(settings.OGC_SERVER['default']['LOCATION'])
+    context_dict["site_url"] = json.dumps(settings.SITEURL)
+    context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
+
+    return render_to_response(template, RequestContext(request, context_dict))
+
+
+
+@login_required
+def delete_edits(request, template='layers/layer_edit_data.html'):
+
+    data_dict = json.loads(request.POST.get('json_data'))
+    feature_id = data_dict['feature_id']
+    layer_name = data_dict['layer_name']
+
+    xml_path = "layers/wfs_delete_row.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'feature_id': feature_id})).strip()
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    headers = {'Content-Type': 'application/xml'}  # set what your server accepts
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    if (status_code != 200):
+        message = "Failed to delete row."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "Row was deleted successfully."
+        success = True
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
+    return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
+
+
+@login_required
+def save_edits(request, template='layers/layer_edit_data.html'):
+
+    data_dict = json.loads(request.POST.get('json_data'))
+
+    feature_id = data_dict['feature_id']
+    layer_name = data_dict['layer_name']
+    data = data_dict['data']
+    data = data.split(",")
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    property_element = ""
+    # concatenate all the properties
+    for i, val in enumerate(data):
+        attribute, value = data[i].split("=")
+        # xml string with property element
+        property_element_1 = """<wfs:Property>
+          <wfs:Name>{}</wfs:Name>
+          <wfs:Value>{}</wfs:Value>
+        </wfs:Property>\n""".format(attribute, value)
+        property_element = property_element + property_element_1
+    # build the update wfs-t request
+    xml_path = "layers/wfs_edit_data.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'feature_id': feature_id,
+            'property_element': mark_safe(property_element)})).strip()
+
+    print ("xmlstr", xmlstr)
+
+    headers = {'Content-Type': 'application/xml'}  # set what your server accepts
+
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    if (status_code != 200):
+        message = "Failed to save edited data."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "Edits were saved successfully."
+        success = True
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
+@login_required
+def save_geom_edits(request, template='layers/layer_edit_data.html'):
+
+    data_dict = json.loads(request.POST.get('json_data'))
+    feature_id = data_dict['feature_id']
+    layer_name = data_dict['layer_name']
+    coords = ' '.join(map(str, data_dict['coords']))
+
+    full_layer_name = "geonode:" + layer_name
+    layer = _resolve_layer(
+        request,
+        full_layer_name,
+        'base.change_resourcebase_metadata',
+        _PERMISSION_MSG_METADATA)
+
+    store_name, geometry_clm = get_store_name(layer_name)
+    xml_path = "layers/wfs_edit_point_geom.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name,
+            'coords': coords,
+            'feature_id': feature_id,
+            'geometry_clm': geometry_clm})).strip()
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    headers = {'Content-Type': 'application/xml'} # set what your server accepts
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    store_name, geometry_clm = get_store_name(layer_name)
+
+    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name, store_name)
+    if (status_code != 200):
+        message = "Error saving the geometry."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "Edits were saved successfully."
+        success = True
+        update_bbox_in_CSW(layer, layer_name)
+        return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
+
+
+@login_required
+def save_added_row(request, template='layers/layer_edit_data.html'):
+
+    data_dict = json.loads(request.POST.get('json_data'))
+    feature_type = data_dict['feature_type']
+    layer_name = data_dict['layer_name']
+    data = data_dict['data']
+    data = data.split(",")
+
+    full_layer_name = "geonode:" + layer_name
+    layer = _resolve_layer(
+        request,
+        full_layer_name,
+        'base.change_resourcebase_metadata',
+        _PERMISSION_MSG_METADATA)
+
+    # concatenate all the properties
+    property_element = ""
+    for i, val in enumerate(data):
+        attribute, value = data[i].split("=")
+        if value == "":
+            continue
+        # xml string with property element
+        property_element_1 = """<{}>{}</{}>\n\t\t""".format(attribute, value, attribute)
+        property_element = property_element + property_element_1
+
+    headers = {'Content-Type': 'application/xml'} # set what your server accepts
+
+    # Make a Describe Feature request to get the correct link for the xmlns:geonode
+    xml_path = "layers/wfs_describe_feature.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'layer_name': layer_name})).strip()
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'wfs'
+    describe_feature_response = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).text
+
+    from lxml import etree
+    xml = bytes(bytearray(describe_feature_response, encoding='utf-8'))  # encode it and force the same encoder in the parser
+    doc = etree.XML(xml)
+    nsmap = {}
+    for ns in doc.xpath('//namespace::*'):
+        nsmap[ns[0]] = ns[1]
+    if nsmap['geonode']:
+        geonode_url = nsmap['geonode']
+
+    # Prepare the WFS-T insert request depending on the geometry
+    if feature_type == 'Point':
+        coords = ','.join(map(str, data_dict['coords']))
+        coords = coords.replace(",", " ")
+        xml_path = "layers/wfs_add_new_point.xml"
+    elif feature_type == 'LineString':
+        coords = ','.join(map(str, data_dict['coords']))
+        coords = re.sub('(,[^,]*),', r'\1 ', coords)
+        xml_path = "layers/wfs_add_new_line.xml"
+    elif feature_type == 'Polygon':
+        coords = [item for sublist in data_dict['coords'] for item in sublist]
+        coords = ','.join(map(str, coords))
+        coords = coords.replace(",", " ")
+        xml_path = "layers/wfs_add_new_polygon.xml"
+
+    store_name, geometry_clm = get_store_name(layer_name)
+    xmlstr = get_template(xml_path).render(Context({
+            'geonode_url': geonode_url,
+            'layer_name': layer_name,
+            'coords': coords,
+            'property_element': mark_safe(property_element),
+            'geometry_clm': geometry_clm})).strip()
+
+    url = settings.OGC_SERVER['default']['LOCATION'] + 'geonode/wfs'
+    status_code = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    store_name, geometry_clm = get_store_name(layer_name)
+
+    status_code_bbox, status_code_seed = update_bbox_and_seed(headers, layer_name, store_name)
+    if (status_code != 200):
+        message = "Error adding data."
+        success = False
+        return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+    else:
+        message = "New data were added succesfully."
+        success = True
+        update_bbox_in_CSW(layer, layer_name)
+        return HttpResponse(json.dumps({'success': success,  'message': message}), mimetype="application/json")
+
+# Used to update the BBOX of geoserver and send a see request
+# Takes as input the headers and the layer_name
+# Returns status_code of each request
+def update_bbox_and_seed(headers, layer_name, store_name):
+    # Update the BBOX of layer in geoserver (use of recalculate)
+    url = settings.OGC_SERVER['default']['LOCATION'] + "rest/workspaces/geonode/datastores/{store_name}/featuretypes/{layer_name}.xml?recalculate=nativebbox,latlonbbox".format(** {
+        'store_name': store_name.strip(),
+        'layer_name': layer_name
+    })
+    print ("url", url)
+    xmlstr = """<featureType><enabled>true</enabled></featureType>"""
+    status_code_bbox = requests.put(url, headers=headers, data=xmlstr, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+
+    # Seed the cache for this layer
+    url = settings.OGC_SERVER['default']['LOCATION'] + "gwc/rest/seed/geonode:{layer_name}.xml".format(** {
+        'layer_name': layer_name
+    })
+    xml_path = "layers/seedRequest_geom.xml"
+    xmlstr = get_template(xml_path).render(Context({
+            'workspace': 'geonode',
+            'layer_name': layer_name
+            }))
+    status_code_seed = requests.post(url, data=xmlstr, headers=headers, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
+    return status_code_bbox, status_code_seed
+
+# Update the values for BBOX in CSW with the values calculated in geoserver layer
+def update_bbox_in_CSW(layer, layer_name):
+
+    # Get the coords from geoserver layer and update the base_resourceBase table
+    from geoserver.catalog import Catalog
+    cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+    resource = cat.get_resource(layer_name, workspace="geonode")
+    # use bbox_to_wkt to convert the BBOX coords to the wkt format
+    from geonode.utils import bbox_to_wkt
+    r = bbox_to_wkt(resource.latlon_bbox[0], resource.latlon_bbox[1], resource.latlon_bbox[2], resource.latlon_bbox[3], "4326")
+    csw_wkt_geometry = r.split(";", 1)[1]
+    # update the base_resourceBase
+    from geonode.base.models import ResourceBase
+    resources = ResourceBase.objects.filter(pk=layer.id)
+    resources.update(bbox_x0=resource.latlon_bbox[0], bbox_x1=resource.latlon_bbox[1], bbox_y0=resource.latlon_bbox[2], bbox_y1=resource.latlon_bbox[3], csw_wkt_geometry=csw_wkt_geometry)
+
+    return csw_wkt_geometry
+
+#  Returns the store name based on the workspace and the layer name
+def get_store_name(layer_name):
+    # get the name of the store
+    cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
+    resource = cat.get_resource(layer_name, workspace='geonode')
+    store_name = resource.store.name
+
+    # select the name of the geometry column based on the store type
+    if (store_name == "uploaded"):
+        geometry_clm = "the_geom"
+    else:
+        geometry_clm = "shape"
+
+
+    return store_name, geometry_clm

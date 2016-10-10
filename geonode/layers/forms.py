@@ -253,18 +253,16 @@ class UploadCSVForm(forms.Form):
         super(UploadCSVForm, self).__init__(*args, **kwargs)
         self.fields['selected_country'] = forms.MultipleChoiceField(choices=get_country_names(), required=True)
 
-    title = forms.CharField(max_length=255, required=True)
+    title = forms.CharField(max_length=80, required=True)
 
     LAYER_TYPE = (
         ('1', 'Global Layer'),
-        ('2', 'Layer by Admin1'),
-        ('3', 'Layer by Admin2'),
-        ('3', 'Layer by Location'),
+        ('2', 'Layer by Region'),
+        ('3', 'Layer by Province'),
     )
     layer_type = forms.ChoiceField(choices=LAYER_TYPE, required=True)
-
     csv = forms.FileField(required=True)
-
+    permissions_json = forms.CharField(max_length=500, widget=forms.HiddenInput()) #  stores the permissions json from the permissions form
 
     def write_files(self):
 
@@ -293,25 +291,23 @@ class UploadCSVForm(forms.Form):
         else:
             csv_file_type = str(csv_file).split('.')
             if csv_file_type[1] not in ['csv','CSV']:
-                print csv_file_type[1]
                 raise forms.ValidationError(_("This is not a supported format. Please upload a CSV file."))
         return cleaned_data
 
 
 class UploadEmptyLayerForm(forms.Form):
 
-    empty_layer_name = forms.CharField(max_length=255, required=True, label="Name of new Layer")
+    empty_layer_name = forms.CharField(max_length=80, required=True, label="Name of new Layer")
 
     GEOM_TYPE = (
-        ('MULTIPOINT', 'Points'),
+        ('POINT', 'Points'),
         ('MULTILINESTRING', 'Lines'),
         ('MULTIPOLYGON', 'Polygons')
     )
 
     geom_type = forms.ChoiceField(choices=GEOM_TYPE, required=True, label="Type of Data")
-
-
     total_input_fields = forms.CharField(widget=forms.HiddenInput())
+    permissions_json = forms.CharField(max_length=500, widget=forms.HiddenInput()) #  stores the permissions json from the permissions form
 
     def __init__(self, *args, **kwargs):
 

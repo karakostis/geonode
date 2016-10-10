@@ -477,6 +477,8 @@ def geoserver_post_save(instance, sender, **kwargs):
     catalogue_post_save(instance, Layer)
 
 
+
+
 def geoserver_pre_save_maplayer(instance, sender, **kwargs):
     # If this object was saved via fixtures,
     # do not do post processing.

@@ -697,7 +697,9 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         column.name = slugify(unicode(column.name)).replace('-', '_')
         # Check if the selected value from the dropdown menu matches the first value of the CSV header
         if idx == 0:
-            if column.name != geom_table_id:
+            print ("column.name.strip()", column.name.strip())
+            print ("geom_table_id.strip()", geom_table_id.strip())
+            if column.name.strip() != geom_table_id.strip():
                 errormsgs_val = "The selected value of Layer Type doesn't match the one of the imported layer."
                 status_code = '400'
                 return errormsgs_val, status_code
@@ -710,6 +712,7 @@ def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_
         try:
             sql_table = sql.make_table(csv_table, table_name_temp)
             create_table_sql = sql.make_create_table_statement(sql_table, dialect="postgresql")
+            create_table_sql = re.sub(r'VARCHAR\([0-9]*\)','VARCHAR(254)', create_table_sql)
         except:
             return None, str(sys.exc_info()[0])
 
