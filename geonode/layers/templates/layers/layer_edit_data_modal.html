@@ -309,8 +309,17 @@
               success: function (response) {
                 L.geoJson(response, {
                   onEachFeature: function (feature, layer) {
-                    map.setView([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], 10);
-                    console.log(feature.geometry.coordinates)
+                    if (layer_geom == 'Point'){
+                      map.setView([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], 10);
+                      console.log(feature.geometry.coordinates)
+                    } else {
+                      {% if resource.bbox_string %}
+                        zoom_to_box(map, [{{ resource.bbox_string }}]);
+                      {% endif %}
+                      console.log(feature.geometry.coordinates)
+                    }
+
+
                     drawnItems.addLayer(layer);
 
                    }

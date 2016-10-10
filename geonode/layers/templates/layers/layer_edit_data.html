@@ -172,8 +172,11 @@
     // functionality to cancel edits
     $(document.body).on("click", "._cancel_btn",function(e){
       var clicked_btn = $(this);
-
       discard_changes(clicked_btn, layer_data)
+      $("._cancel_btn").css({"display": "none"});
+      $("._edit_save_btn").prop('disabled', false);
+      $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "block"});
+
     });
 
     // functionality to delete a row
@@ -223,6 +226,7 @@
         $("#layer_data_paginate, #layer_data_filter,#layer_data_length").css({"display": "none"});
 
       } else {
+
         $("#fid__cancel__" + id).css({"display": "none"});
         if (confirm("Are you sure you want to save the edits?")){
            id_selector.html('Edit Attributes');
@@ -379,7 +383,7 @@
     }
     $("._edit_save_btn").html('Edit Attributes');
     $("._edit_save_btn").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
-    $("._edit_save_btn").toggleClass("clicked");
+    $("._edit_save_btn").removeClass("clicked");
     $("._edit_save_btn").closest('td').siblings().attr('contenteditable', 'false');
 
   }
