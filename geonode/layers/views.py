@@ -343,8 +343,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             username = settings.OGC_SERVER['default']['USER']
             password = settings.OGC_SERVER['default']['PASSWORD']
             schema = get_schema(location, name, username=username, password=password)
-            print ("schema", schema)
-
 
             # get the name of the column which holds the geometry
             #geomName = schema.keys()[schema.values().index('Point')] or schema.keys()[schema.values().index('MultiLineString')]
@@ -378,6 +376,9 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 # Loads the data using the OWS lib when the "Do you want to filter it" button is clicked.
 def load_layer_data(request, template='layers/layer_detail.html'):
 
+    import time
+    start_time = time.time()
+
     context_dict = {}
     data_dict = json.loads(request.POST.get('json_data'))
     layername = data_dict['layer_name']
@@ -396,9 +397,13 @@ def load_layer_data(request, template='layers/layer_detail.html'):
         wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
         response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
-        features_response = json.dumps(json.loads(response.read()))
+
+        x = response.read()
+        x = json.loads(x)
+        features_response = json.dumps(x)
         decoded = json.loads(features_response)
         decoded_features = decoded['features']
+
 
         properties = {}
         for key in decoded_features[0]['properties']:
@@ -408,17 +413,21 @@ def load_layer_data(request, template='layers/layer_detail.html'):
         # in the dictionary (if doesn't exist) together with the value
 
         for i in range(len(decoded_features)):
+
             for key, value in decoded_features[i]['properties'].iteritems():
-                if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
+                if value != '' and isinstance(value, (str, int, float)):
                     properties[key].append(value)
+
         for key in properties:
+            properties[key] = list(set(properties[key]))
             properties[key].sort()
+
         context_dict["feature_properties"] = properties
         print "OWSLib worked as expected"
 
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
-
+    print("--- %s seconds ---" % (time.time() - start_time))
     return HttpResponse(json.dumps(context_dict), mimetype="application/json")
 
 
@@ -1156,6 +1165,10 @@ def download_csv(request):
 
 @login_required
 def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
+
+    import time
+    start_time = time.time()
+
     context_dict = {}
     layer = _resolve_layer(
         request,
@@ -1225,6 +1238,7 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     context_dict["site_url"] = json.dumps(settings.SITEURL)
     context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
 
+    print("--- %s seconds ---" % (time.time() - start_time))
     return render_to_response(template, RequestContext(request, context_dict))
 
 
@@ -1285,8 +1299,6 @@ def save_edits(request, template='layers/layer_edit_data.html'):
             'layer_name': layer_name,
             'feature_id': feature_id,
             'property_element': mark_safe(property_element)})).strip()
-
-    print ("xmlstr", xmlstr)
 
     headers = {'Content-Type': 'application/xml'}  # set what your server accepts
 
@@ -1434,7 +1446,7 @@ def update_bbox_and_seed(headers, layer_name, store_name):
         'store_name': store_name.strip(),
         'layer_name': layer_name
     })
-    print ("url", url)
+
     xmlstr = """<featureType><enabled>true</enabled></featureType>"""
     status_code_bbox = requests.put(url, headers=headers, data=xmlstr, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
 
