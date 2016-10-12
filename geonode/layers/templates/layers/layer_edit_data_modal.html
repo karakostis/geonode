@@ -11,91 +11,74 @@
       var status_msg = $("#status_msg");
       add_geometry = $("#add_geometry");
       save_added_data = $("#_save_added_data");
+      ok_added_data = $("#_ok_added_data");
       close_added_data = $("#_close_added_data");
       // functionality to add spatial and non spatial values
-      save_added_data.on("click",function(e){
-        if (add_geometry.data("clicked_btn") == '_add_data') {
-          var coords = add_geometry.data("coords");
-          if (coords != null && coords.length > 0) {
-            // get the added non spatial data
-            var tdArray = $("#_add_data").closest('td').siblings().map(function(){
-               return this.textContent;
-            }).get();
+      ok_added_data.on("click",function(e){
+        var coords = add_geometry.data("coords");
+        if (coords != null && coords.length > 0) {
+          // get the added non spatial data
+          var tdArray = $("#_add_data").closest('td').siblings().map(function(){
+             return this.textContent;
+          }).get();
 
-            // get the names and variable type of the columns
-            var thArray = [];
-            var th_data_type = [];
-            $('#layer_data > thead > tr > th').each(function(){
-                thArray.push($(this).text())
-                th_data_type.push($(this).attr('data-attributes'))
-            })
-            thArray.shift();
-            th_data_type.shift();
+          // get the names and variable type of the columns
+          var thArray = [];
+          var th_data_type = [];
+          $('#layer_data > thead > tr > th').each(function(){
+              thArray.push($(this).text())
+              th_data_type.push($(this).attr('data-attributes'))
+          })
+          thArray.shift();
+          th_data_type.shift();
 
-            // perform check that passed values are of the right variable type (e.g.not passing strings in int field)
-            var data_validation = false;
-            for (i = 0; i < tdArray.length; i++) {
+          // perform check that passed values are of the right variable type (e.g.not passing strings in int field)
+          var data_validation = false;
+          for (i = 0; i < tdArray.length; i++) {
 
-              if (th_data_type[i] == 'string'){
-                if (isNaN(tdArray[i])){
-                  data_validation = true;
-                } else {
-                  data_validation = true;
-                }
-              } else if (th_data_type[i] !== 'string' && !isNaN(tdArray[i])){
+            if (th_data_type[i] == 'string'){
+              if (isNaN(tdArray[i])){
                 data_validation = true;
-              } else{
-                data_validation = false;
-                data_type = th_data_type[i];
-                column_name = thArray[i];
-                var value = tdArray[i];
-                break;
+              } else {
+                data_validation = true;
               }
-            }
-
-            if (data_validation == false){
-              status_msg.empty();
-              status_msg.append( "<p id='wrong-data-type' class='alert alert-warning'> Error saving data. Column " + column_name + " is " + data_type + ". Value " + value + " is not " + data_type + ".</p>");
-
-            } else {
-
-              //Build data to send
-              data_to_send = ''
-              for (i = 0; i < thArray.length; i++) {
-                  data_to_send = data_to_send + thArray[i] + '=' + tdArray[i] + ','
-              }
-              data_to_send = data_to_send.slice(0, -1); // remove last character
-
-              // build whole url
-              whole_url = "{% url 'save_added_row' %}";
-              $.ajax({
-                type: "POST",
-                url: whole_url,
-                data: { json_data: JSON.stringify({ data: data_to_send, feature_type: feature_type, layer_name: layer_name, coords:coords }) },
-                success: function(data) {
-                  status_msg.empty();
-                  if (data['success'] == true){
-                    status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
-                    location.reload();
-                  } else {
-                    status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
-                  }
-                }
-              });
-              add_geometry.data("coords", null);
+            } else if (th_data_type[i] !== 'string' && !isNaN(tdArray[i])){
+              data_validation = true;
+            } else{
+              data_validation = false;
+              data_type = th_data_type[i];
+              column_name = thArray[i];
+              var value = tdArray[i];
+              break;
             }
           }
-        } else {
-          var coords = add_geometry.data("coords");
-          var feature_id = $("#"+ add_geometry.data("clicked_btn")).data('fid');
-          if (coords != null && coords.length > 0) {
-            whole_url = "{% url 'save_geom_edits' %}";
+
+          if (data_validation == false){
+            status_msg.empty();
+            status_msg.append( "<p id='wrong-data-type' class='alert alert-warning'> Error saving data. Column " + column_name + " is " + data_type + ". Value " + value + " is not " + data_type + ".</p>");
+
+          } else {
+
+            //Build data to send
+            data_to_send = ''
+            for (i = 0; i < thArray.length; i++) {
+                data_to_send = data_to_send + thArray[i] + '=' + tdArray[i] + ','
+            }
+            data_to_send = data_to_send.slice(0, -1); // remove last character
+
+            // build whole url
+            whole_url = "{% url 'save_added_row' %}";
             $.ajax({
               type: "POST",
               url: whole_url,
-              data: { json_data: JSON.stringify({ feature_id: feature_id, layer_name: layer_name, coords:coords }) },
-              dataType: "json",
+              data: { json_data: JSON.stringify({ data: data_to_send, feature_type: feature_type, layer_name: layer_name, coords:coords }) },
+              beforeSend: function(){
+                $( ".loading_msg" ).show();
+                $('#_ok_added_data').prop('disabled', true);
+              },
               success: function(data) {
+                $( ".loading_msg" ).hide();
+                $('#_ok_added_data').prop('disabled', false);
                 status_msg.empty();
                 if (data['success'] == true){
                   status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
@@ -108,6 +91,33 @@
             add_geometry.data("coords", null);
           }
         }
+      });
+
+      save_added_data.on("click",function(e){
+        //if (add_geometry.data("clicked_btn") == '_add_data') {
+        //} else {
+        var coords = add_geometry.data("coords");
+        var feature_id = $("#"+ add_geometry.data("clicked_btn")).data('fid');
+        if (coords != null && coords.length > 0) {
+          whole_url = "{% url 'save_geom_edits' %}";
+          $.ajax({
+            type: "POST",
+            url: whole_url,
+            data: { json_data: JSON.stringify({ feature_id: feature_id, layer_name: layer_name, coords:coords }) },
+            dataType: "json",
+            success: function(data) {
+              status_msg.empty();
+              if (data['success'] == true){
+                status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
+                location.reload();
+              } else {
+                status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
+              }
+            }
+          });
+          add_geometry.data("coords", null);
+        }
+        //}
       });
 
       // close window without saving anything
@@ -129,26 +139,16 @@
             zoom_to_box(map, [{{ resource.bbox_string }}]);
           {% endif %}
           */
-          {% if resource.get_tiles_url %}
-            tile_layer = L.tileLayer("{{ resource.get_tiles_url|safe }}",
-              {
-               'opacity':0.8
-              });
-          {%  elif resource.ptype == "gxp_wmscsource"  %}
-            tile_layer = L.tileLayer.wms('{{ resource.ows_url|safe }}', {
-                layers: '{{ resource.typename }}',
-                format: 'image/png',
-                transparent: true,
-                'opacity':0.8
-            });
-          {%  elif resource.ptype == "gxp_arcrestsource" %}
-            tile_layer = L.esri.dynamicMapLayer('{{ resource.ows_url|safe }}', {
-                layers: '{{ resource.typename }}',
-                format: 'png',
-                transparent: true,
-                'opacity':0.8
-            });
-          {% endif %}
+          //http://staging.geonode.wfp.org:80/geoserver/wms
+          base_url = {{ url | safe }};
+          context_path = 'wms/'
+          url_string = base_url + context_path
+          tile_layer = L.tileLayer.wms(url_string, {
+             layers: 'geonode:' + layer_name,
+             format: 'image/png',
+             transparent: true,
+             version: '1.1.0'
+           });
           if (tile_layer != null) {
             map.addLayer(tile_layer);
             tile_layer.setZIndex(99);
@@ -160,6 +160,8 @@
           layer_geom = {{ layer_geom | safe }};
 
           if (add_geometry.data("clicked_btn") == '_add_data'){
+            $("._modal_save").hide();
+            $("._modal_ok").show();
             $("#instructions_msg").text("Click the button on the map to add features.");
             map.setView([0,0], 1);
             if (layer_geom == 'Polygon'){
@@ -244,6 +246,10 @@
               $( ".leaflet-draw" ).remove();
             });
 
+            ok_added_data.click(function() {
+              map.removeLayer(drawnItems);
+              $( ".leaflet-draw" ).remove();
+            });
 
             close_added_data.click(function() {
               map.removeLayer(drawnItems);
@@ -251,7 +257,8 @@
             });
 
           } else {
-
+            $("._modal_save").show();
+            $("._modal_ok").hide();
             $("#instructions_msg").text("Click the button on the map to edit features.");
             layer_name = {{ layer_name | safe }};
             base_url = {{ url | safe }};
@@ -276,7 +283,7 @@
             // url to be used when on staging/production
             var context_path = "geonode/ows"
             var url_string = base_url + context_path + L.Util.getParamString(parameters);
-            var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
+            //var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
             var drawnItems = new L.FeatureGroup().addTo(map);
             if (layer_geom == 'Point'){
               var drawControl = new L.Control.Draw({
