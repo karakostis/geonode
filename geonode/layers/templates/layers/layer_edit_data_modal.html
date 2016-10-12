@@ -11,11 +11,15 @@
       var status_msg = $("#status_msg");
       add_geometry = $("#add_geometry");
       save_added_data = $("#_save_added_data");
+      ok_added_data = $("#_ok_added_data");
       close_added_data = $("#_close_added_data");
       // functionality to add spatial and non spatial values
+
       save_added_data.on("click",function(e){
         if (add_geometry.data("clicked_btn") == '_add_data') {
+
           var coords = add_geometry.data("coords");
+          alert(coords)
           if (coords != null && coords.length > 0) {
             // get the added non spatial data
             var tdArray = $("#_add_data").closest('td').siblings().map(function(){
@@ -160,6 +164,8 @@
           layer_geom = {{ layer_geom | safe }};
 
           if (add_geometry.data("clicked_btn") == '_add_data'){
+            $("._modal_save").hide();
+            $("._modal_ok").show();
             $("#instructions_msg").text("Click the button on the map to add features.");
             map.setView([0,0], 1);
             if (layer_geom == 'Polygon'){
@@ -244,6 +250,10 @@
               $( ".leaflet-draw" ).remove();
             });
 
+            ok_added_data.click(function() {
+              map.removeLayer(drawnItems);
+              $( ".leaflet-draw" ).remove();
+            });
 
             close_added_data.click(function() {
               map.removeLayer(drawnItems);
@@ -251,7 +261,8 @@
             });
 
           } else {
-
+            $("._modal_save").show();
+            $("._modal_ok").hide();
             $("#instructions_msg").text("Click the button on the map to edit features.");
             layer_name = {{ layer_name | safe }};
             base_url = {{ url | safe }};

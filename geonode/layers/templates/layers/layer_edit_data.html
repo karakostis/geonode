@@ -34,14 +34,16 @@
 <!-- added for edit layer data functionality -->
 <div class="row">
   <div class="col-md-12">
-    <button type="button" id = "button-toggle" class="btn btn-primary btn-circle" data-toggle="button" placeholder="" data-toggle="tooltip" title="Add another row">
-      {% trans "Add another row" %}
+    <button type="button" id = "button-toggle" class="btn btn-primary btn-circle" data-toggle="button" placeholder="" data-toggle="tooltip" title="Add a new entry" style="background-color:#a7a3a3; border-color:#a7a3a3">
+      {% trans "Add a new entry" %}
     </button></br></br>
     <div id="add_data_div" style="display: none;">
       <table id="add_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
         <thead id="table_add_head">
         </thead>
-      </table>
+      </table></br>
+      
+
     </div>
     </br></br>
     <table id="layer_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
@@ -74,7 +76,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" id="_save_added_data" data-dismiss="modal">{% trans "Save" %}</button>
+        <button type="button" class="btn btn-default _modal_save" id="_save_added_data" data-dismiss="modal" style="display:none">{% trans "Save" %}</button>
+        <button type="button" class="btn btn-default _modal_ok" id="_ok_added_data" data-dismiss="modal" style="display:none">{% trans "OK" %}</button>
         <button type="button" class="btn btn-default" id="_close_added_data" data-dismiss="modal">{% trans "Close" %}</button>
       </div>
     </div>
@@ -120,7 +123,7 @@
         // add id (fid from table) and edit button
         layer_name = feature_properties[i]['id'].split(".")[0];
         row_id = feature_properties[i]['id'].split(".")[1];
-        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit Attributes" %}</button><button id="fid__cancel__' + row_id + '"  class="btn btn-info btn-sm _cancel_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3; display:none">{% trans "Cancel" %}</button><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Edit Geometry" %}</button><button id="fid__delete__' + row_id + '" class="btn btn-info btn-sm _delete_btn" data-toggle="modal" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Delete Row" %}</button>';
+        edit_btn = '<button id="' + row_id + '" class="btn btn-info btn-sm _edit_save_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3">{% trans "Edit Attributes" %}</button></br><button id="fid__cancel__' + row_id + '"  class="btn btn-info btn-sm _cancel_btn" style="margin-bottom:5px;width:90px; background-color:#a7a3a3;border-color:#a7a3a3; display:none">{% trans "Cancel" %}</button><button id="fid__' + row_id + '" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Edit Geometry" %}</button></br><button id="fid__delete__' + row_id + '" class="btn btn-info btn-sm _delete_btn" data-toggle="modal" data-fid="' + feature_properties[i]['id'] +'" style="background-color:#a7a3a3; border-color:#a7a3a3;margin-bottom:5px;width:90px;">{% trans "Delete Row" %}</button>';
         row_values.push(edit_btn);
 
         for (var key in feature_properties[i]['properties']) {
@@ -153,7 +156,7 @@
     for (var i=0; i<length_of_array; i++){
       row_add_values[i] = ''
     }
-    add_btn = '<button id="_add_data" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" style="background-color:#a7a3a3;border-color:#a7a3a3">Add Geometry</button>';
+    add_btn = '<button id="_add_data" class="btn btn-info btn-sm _add_save_btn" data-toggle="modal" data-target="#add_geometry" style="background-color:rgb(255, 0, 0);border-color:rgb(255, 0, 0)">Add Geometry</button>';
     row_add_values[0] = add_btn
 
     whole_added_val.push(row_add_values);
@@ -335,13 +338,11 @@
     $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
     $("#button-toggle").click(function() {
 
-
       $(this).toggleClass("clicked");
       if ($("#button-toggle").hasClass("clicked")) {
-        $("#button-toggle").css({ "background-color": "#3276b1", "border-color": "#3276b1"  });
+        $("#button-toggle").css({ "background-color": "#5cb85c", "border-color": "#5cb85c"  });
         $('#add_data_div').show();
         add_data.fnAdjustColumnSizing();
-
 
       }  else {
         $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
@@ -349,7 +350,6 @@
       }
 
     });
-
 
   });
 
