@@ -42,7 +42,8 @@
         <thead id="table_add_head">
         </thead>
       </table></br>
-      
+
+      <button type="button" class="btn btn-info btn-sm pull-right" id="_ok_added_data" style="background-color:#5cb85c;border-color:#5cb85c">{% trans "Save" %}</button>
 
     </div>
     </br></br>
@@ -91,24 +92,29 @@
 
   $(function() {
     feature_properties = {{ feature_properties | safe }};
+    attribute_description = {{ attribute_description | safe }};
+    display_order_dict_sorted = {{ display_order_dict_sorted | safe }};
     data_from_view_url = {{ url | safe }};
     schema = {{ schema | safe }};
     layer_name = {{ layer_name | safe }};
     site_url = {{ site_url | safe }};
     default_workspace = {{ default_workspace | safe }};
-
     whole_array = [];
     // build the column names for the table
     if (feature_properties.length > 0 && "properties" in feature_properties[0]){
       //all_columns = ['<th>Edit</th><th></th>'];
       all_columns = ['<th> </th>'];
-      for (var key in feature_properties[0]['properties']){
-        all_columns.push("<th data-attributes=" + schema['properties'][key]+">" + key + "</th>");
+      //for (var key in feature_properties[0]['properties']){
+      for (var key in display_order_dict_sorted){
+        title = attribute_description[key] + ",type:" + schema['properties'][key]
+        all_columns.push("<th title= '" + title + "' data-toggle='tooltip' data-attributes=" + schema['properties'][key]+">" + key + "</th>");
       }
     } else if (feature_properties.length == 0 && "properties" in schema){
       all_columns = ['<th>Add</th>'];
-      for (var key in schema['properties']) {
-        all_columns.push("<th data-attributes=" + schema['properties'][key]+">" + key + "</th>");
+      //for (var key in schema['properties']) {
+      for (var key in display_order_dict_sorted){
+        title = attribute_description[key] + ",type:" + schema['properties'][key]
+        all_columns.push("<th title=" + title + " data-toggle='tooltip' data-attributes=" + schema['properties'][key]+">" + key + "</th>");
       }
       length_of_array = all_columns.length;
     }
@@ -333,7 +339,6 @@
       $('#tabContent_add_geom').show();
       $('.tab-content-add-map').show();
     });
-
 
     $("#button-toggle").css({ "background-color": "#a7a3a3", "border-color": "#a7a3a3" });
     $("#button-toggle").click(function() {

@@ -329,6 +329,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
             # get layer's attributes with display_order gt 0
             attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+
             layers_attributes = []
             for values in attr_to_display.values('attribute'):
                 layers_attributes.append(values['attribute'])
@@ -362,7 +363,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
                     schema['properties'].pop(key, None)
 
             filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
-
             context_dict["schema"] = schema
             context_dict["filtered_attributes"] = filtered_attributes
 
@@ -378,14 +378,11 @@ def load_layer_data(request, template='layers/layer_detail.html'):
 
     import time
     start_time = time.time()
-
     context_dict = {}
     data_dict = json.loads(request.POST.get('json_data'))
     layername = data_dict['layer_name']
     filtered_attributes = data_dict['filtered_attributes']
-
     workspace, name = layername.split(':')
-
     location = "{location}{service}".format(** {
         'location': settings.OGC_SERVER['default']['LOCATION'],
         'service': 'wms',
@@ -413,7 +410,6 @@ def load_layer_data(request, template='layers/layer_detail.html'):
         # in the dictionary (if doesn't exist) together with the value
 
         for i in range(len(decoded_features)):
-
             for key, value in decoded_features[i]['properties'].iteritems():
                 if value != '' and isinstance(value, (str, int, float)):
                     properties[key].append(value)
@@ -1223,6 +1219,15 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
 
+    # get the metadata description
+    attribute_description = {}
+    display_order_dict = {}
+    for idx, value in enumerate(filtered_attributes):
+        description = layer.attribute_set.values('description').filter(attribute=value)
+        display_order = layer.attribute_set.values('display_order').filter(attribute=value)
+        attribute_description[value] = description[0]['description']
+        display_order_dict[value] = display_order[0]['display_order']
+
     context_dict["schema"] = schema
 
     response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
@@ -1231,7 +1236,16 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     decoded = json.loads(features_response)
     decoded_features = decoded['features']
 
+    # order the list and create ordered dictionary
+    import operator
+    display_order_list_sorted = sorted(display_order_dict.items(), key=operator.itemgetter(1))
+    from collections import OrderedDict
+    display_order_dict_sorted = OrderedDict(display_order_list_sorted)
+
+    # display_order_dict_sorted = dict(display_order_list_sorted)
     context_dict["feature_properties"] = json.dumps(decoded_features)
+    context_dict["attribute_description"] = json.dumps(attribute_description)
+    context_dict["display_order_dict_sorted"] = json.dumps(display_order_dict_sorted)
     context_dict["resource"] = layer
     context_dict["layer_name"] = json.dumps(name)
     context_dict["url"] = json.dumps(settings.OGC_SERVER['default']['LOCATION'])
