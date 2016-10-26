@@ -20,6 +20,29 @@
     height: 250px;
     width: 100%;
   }
+  /* animation for rotating icon */
+  .gear {
+    -webkit-animation: rotation 6s infinite linear;
+  	-moz-animation: rotation 6s infinite linear;
+  	-o-animation: rotation 6s infinite linear;
+  	animation: rotation 6s infinite linear;
+  }
+  @-webkit-keyframes rotation {
+    from {-webkit-transform: rotate(0deg);}
+    to   {-webkit-transform: rotate(359deg);}
+  }
+  @-moz-keyframes rotation {
+    from {-moz-transform: rotate(0deg);}
+    to   {-moz-transform: rotate(359deg);}
+  }
+  @-o-keyframes rotation {
+    from {-o-transform: rotate(0deg);}
+    to   {-o-transform: rotate(359deg);}
+  }
+  @keyframes rotation {
+    from {transform: rotate(0deg);}
+    to   {transform: rotate(359deg);}
+  }
 </style>
 
 {% endblock %}
@@ -36,7 +59,9 @@
   <div class="col-md-12">
     <button type="button" id = "button-toggle" class="btn btn-primary btn-circle" data-toggle="button" placeholder="" data-toggle="tooltip" title="Add a new entry" style="background-color:#a7a3a3; border-color:#a7a3a3">
       {% trans "Add a new entry" %}
-    </button></br></br>
+    </button>
+    <img src="{% static 'lib/css/geonode_icon.png' %}" class="gear pull-right loading_page_msg" witdth="30" height="30" style="margin-right:10px; display:none"/>
+    <div class="pull-right loading_page_msg" style="margin-right:10px;margin-top:5px;display:none">{% trans "Loading..." %}</div></br></br>
     <div id="add_data_div" style="display: none;">
       <table id="add_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
         <thead id="table_add_head">
@@ -44,8 +69,10 @@
       </table></br>
 
       <button type="button" class="btn btn-info btn-sm pull-right" id="_ok_added_data" style="background-color:#5cb85c;border-color:#5cb85c">{% trans "Save" %}</button>
-
+      <img src="{% static 'lib/css/images/geonode_icon.png' %}" class="gear pull-right loading_msg" witdth="30" height="30" style="margin-right:10px; display:none"/>
+      <div class="pull-right loading_msg" style="margin-right:10px;margin-top:5px;display:none">{% trans "Saving..." %}</div>
     </div>
+
     </br></br>
     <table id="layer_data" class="table table-striped table-bordered" cellspacing="0" width="100%">
       <thead id="table_head">
@@ -89,7 +116,7 @@
 {% block extra_script %}
 
 <script type="text/javascript">
-
+  $( ".loading_page_msg" ).show();
   $(function() {
     feature_properties = {{ feature_properties | safe }};
     attribute_description = {{ attribute_description | safe }};
@@ -101,16 +128,17 @@
     default_workspace = {{ default_workspace | safe }};
     whole_array = [];
     // build the column names for the table
+
     if (feature_properties.length > 0 && "properties" in feature_properties[0]){
       //all_columns = ['<th>Edit</th><th></th>'];
-      all_columns = ['<th> </th>'];
+      all_columns = ['<th style="width: 90px;"> </th>'];
       //for (var key in feature_properties[0]['properties']){
       for (var key in display_order_dict_sorted){
         title = attribute_description[key] + ",type:" + schema['properties'][key]
         all_columns.push("<th title= '" + title + "' data-toggle='tooltip' data-attributes=" + schema['properties'][key]+">" + key + "</th>");
       }
     } else if (feature_properties.length == 0 && "properties" in schema){
-      all_columns = ['<th>Add</th>'];
+      all_columns = ['<th style="width: 90px;">Add</th>'];
       //for (var key in schema['properties']) {
       for (var key in display_order_dict_sorted){
         title = attribute_description[key] + ",type:" + schema['properties'][key]
@@ -141,7 +169,6 @@
       }
       length_of_array = row_values.length;
     }
-
     // add data using DataTable lib
     var layer_data = $("#layer_data").DataTable({
       "scrollX": true,
@@ -152,8 +179,6 @@
         $(row).attr('data-initial', data);
       }
     });
-
-
     //Functionality to create row for adding data
     whole_added_val = [];
     // create an array with same length as the number of attributes
@@ -175,6 +200,7 @@
     $("#add_data_paginate, #add_data_filter,#add_data_length,#add_data_info").css({"display": "none"});
     // make add new geometry cells always editable
     $("#_add_data").closest('td').siblings().attr('contenteditable', 'true');
+    $( ".loading_page_msg" ).hide();
 
 
 

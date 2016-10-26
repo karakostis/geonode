@@ -72,7 +72,13 @@
               type: "POST",
               url: whole_url,
               data: { json_data: JSON.stringify({ data: data_to_send, feature_type: feature_type, layer_name: layer_name, coords:coords }) },
+              beforeSend: function(){
+                $( ".loading_msg" ).show();
+                $('#_ok_added_data').prop('disabled', true);
+              },
               success: function(data) {
+                $( ".loading_msg" ).hide();
+                $('#_ok_added_data').prop('disabled', false);
                 status_msg.empty();
                 if (data['success'] == true){
                   status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
@@ -277,7 +283,7 @@
             // url to be used when on staging/production
             var context_path = "geonode/ows"
             var url_string = base_url + context_path + L.Util.getParamString(parameters);
-            var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
+            //var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
             var drawnItems = new L.FeatureGroup().addTo(map);
             if (layer_geom == 'Point'){
               var drawControl = new L.Control.Draw({
