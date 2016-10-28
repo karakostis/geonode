@@ -240,6 +240,8 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         'base.view_resourcebase',
         _PERMISSION_MSG_VIEW)
 
+    print settings.GOOGLE_ANALYTICS_ID
+
     # assert False, str(layer_bbox)
     config = layer.attribute_config()
 
