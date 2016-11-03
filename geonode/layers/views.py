@@ -240,14 +240,13 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         'base.view_resourcebase',
         _PERMISSION_MSG_VIEW)
 
-    print settings.GOOGLE_ANALYTICS_ID
-
     # assert False, str(layer_bbox)
     config = layer.attribute_config()
 
     # Add required parameters for GXP lazy-loading
     layer_bbox = layer.bbox
     bbox = [float(coord) for coord in list(layer_bbox[0:4])]
+
     config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
     config["bbox"] = bbox if config["srs"] != 'EPSG:900913' \
         else llbbox_to_mercator([float(coord) for coord in bbox])
@@ -272,6 +271,18 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             ows_url=layer.ows_url,
             layer_params=json.dumps(config))
 
+    # build WMS URL link
+    wms_url = "{ows_url}/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.0&LAYERS={layername}&STYLES=&FORMAT=image/png&HEIGHT=256&WIDTH=256&BBOX={bbox_0},{bbox_1},{bbox_2},{bbox_3}".format(** {
+        'ows_url': layer.ows_url,
+        'layername': layername,
+        'bbox_0': bbox[0],
+        'bbox_1': bbox[1],
+        'bbox_2': bbox[2],
+        'bbox_3': bbox[3],
+    })
+
+    print ("wms_url:", wms_url)
+
     # Update count for popularity ranking,
     # but do not includes admins or resource owners
     if request.user != layer.owner and not request.user.is_superuser:
@@ -295,6 +306,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         "metadata": metadata,
         "is_layer": True,
         "wps_enabled": settings.OGC_SERVER['default']['WPS_ENABLED'],
+        "wms_url": wms_url,
     }
 
     context_dict["viewer"] = json.dumps(
@@ -324,6 +336,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         # get type of layer (raster or vector)
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         resource = cat.get_resource(name, workspace=workspace)
+
         if (type(resource).__name__ == 'Coverage'):
             context_dict["layer_type"] = "raster"
         elif (type(resource).__name__ == 'FeatureType'):

@@ -3,6 +3,7 @@
 <article itemscope itemtype="http://schema.org/Dataset" class="description tab-pane active" id="info">
   <dl class="dl-horizontal">
     {% if resource.title %}
+
     <dt>{% trans "Title" %}</dt>
     <dd itemprop="name">{{ resource.title|truncatechars:80 }}</dd>
     {% endif %}
@@ -28,6 +29,7 @@
     {% if resource.abstract %}
     <dt>{% trans "Abstract" %}</dt>
     <dd itemprop="description">{{ resource.abstract|escape|urlize|linebreaks|safe|truncatechars:1000 }}</dd>
+    <dd itemprop="name">{{ wms_url|escape|urlize|linebreaks|safe|truncatechars:1000 }}</dd>
     {% endif %}
 
     {% if resource.date %}

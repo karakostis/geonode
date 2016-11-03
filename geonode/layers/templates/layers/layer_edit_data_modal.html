@@ -143,12 +143,14 @@
           base_url = {{ url | safe }};
           context_path = 'wms/'
           url_string = base_url + context_path
+
           tile_layer = L.tileLayer.wms(url_string, {
              layers: 'geonode:' + layer_name,
              format: 'image/png',
              transparent: true,
              version: '1.1.0'
            });
+
           if (tile_layer != null) {
             map.addLayer(tile_layer);
             tile_layer.setZIndex(99);
