@@ -242,7 +242,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
     # assert False, str(layer_bbox)
     config = layer.attribute_config()
-
     # Add required parameters for GXP lazy-loading
     layer_bbox = layer.bbox
     bbox = [float(coord) for coord in list(layer_bbox[0:4])]
@@ -281,7 +280,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         'bbox_3': bbox[3],
     })
 
-    print ("wms_url:", wms_url)
 
     # Update count for popularity ranking,
     # but do not includes admins or resource owners
@@ -307,6 +305,8 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         "is_layer": True,
         "wps_enabled": settings.OGC_SERVER['default']['WPS_ENABLED'],
         "wms_url": wms_url,
+        "site_url": settings.SITEURL,
+        "layername": layername,
     }
 
     context_dict["viewer"] = json.dumps(

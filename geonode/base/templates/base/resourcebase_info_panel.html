@@ -29,7 +29,6 @@
     {% if resource.abstract %}
     <dt>{% trans "Abstract" %}</dt>
     <dd itemprop="description">{{ resource.abstract|escape|urlize|linebreaks|safe|truncatechars:1000 }}</dd>
-    <dd itemprop="name">{{ wms_url|escape|urlize|linebreaks|safe|truncatechars:1000 }}</dd>
     {% endif %}
 
     {% if resource.date %}
@@ -91,6 +90,15 @@
     <dt>{% trans "Point of Contact" %}</dt>
     <dd><a href="{{ resource.poc.user.get_absolute_url }}">{{ resource.poc.user.username }}</a></dd>
     {% endif %}
+
+    {% if wms_url %}
+    <dt>{% trans "WMS URL" %}</dt>
+    <dd onclick="copyToClipboard(document.getElementById('btn_wms_url').getAttribute('data-href'))">
+      <a> {% trans "WMS URL" %} </a>
+      <i id="btn_wms_url" data-href="{{ wms_url }}" class="fa fa-clipboard" aria-hidden="true"></i>
+    </dd>
+    {% endif %}
+
   </dl>
 
   <dl class="dl-horizontal">
@@ -173,3 +181,9 @@
   </dl>
 
 </article>
+
+<script type="text/javascript">
+  function copyToClipboard(text) {
+  window.prompt("Copy to clipboard: Ctrl+C, Enter", text);
+  }
+</script>
