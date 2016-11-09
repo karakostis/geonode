@@ -500,12 +500,24 @@
       var leafletData = $injector.get('leafletData'),
           map = leafletData.getMap('filter-map');
 
+
       map.then(function(map){
         map.on('moveend', function(){
           $scope.query['extent'] = map.getBounds().toBBoxString();
           query_api($scope.query);
         });
       });
+
+      var showMap = false;
+      $('#_extent_filter').click(function(evt) {
+     	  showMap = !showMap
+        if (showMap){
+          leafletData.getMap().then(function(map) {
+            map.invalidateSize();
+          });
+        }
+      });
+
     }
   });
 })();
