@@ -242,10 +242,10 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
     # assert False, str(layer_bbox)
     config = layer.attribute_config()
-
     # Add required parameters for GXP lazy-loading
     layer_bbox = layer.bbox
     bbox = [float(coord) for coord in list(layer_bbox[0:4])]
+
     config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
     config["bbox"] = bbox if config["srs"] != 'EPSG:900913' \
         else llbbox_to_mercator([float(coord) for coord in bbox])
@@ -270,6 +270,17 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             ows_url=layer.ows_url,
             layer_params=json.dumps(config))
 
+    # build WMS URL link
+    wms_url = "{ows_url}/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.0&LAYERS={layername}&STYLES=&FORMAT=image/png&HEIGHT=256&WIDTH=256&BBOX={bbox_0},{bbox_1},{bbox_2},{bbox_3}".format(** {
+        'ows_url': layer.ows_url,
+        'layername': layername,
+        'bbox_0': bbox[0],
+        'bbox_1': bbox[1],
+        'bbox_2': bbox[2],
+        'bbox_3': bbox[3],
+    })
+
+
     # Update count for popularity ranking,
     # but do not includes admins or resource owners
     if request.user != layer.owner and not request.user.is_superuser:
@@ -293,6 +304,9 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         "metadata": metadata,
         "is_layer": True,
         "wps_enabled": settings.OGC_SERVER['default']['WPS_ENABLED'],
+        "wms_url": wms_url,
+        "site_url": settings.SITEURL,
+        "layername": layername,
     }
 
     context_dict["viewer"] = json.dumps(
@@ -322,6 +336,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         # get type of layer (raster or vector)
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         resource = cat.get_resource(name, workspace=workspace)
+
         if (type(resource).__name__ == 'Coverage'):
             context_dict["layer_type"] = "raster"
         elif (type(resource).__name__ == 'FeatureType'):
@@ -329,6 +344,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 
             # get layer's attributes with display_order gt 0
             attr_to_display = layer.attribute_set.filter(display_order__gt=0)
+
             layers_attributes = []
             for values in attr_to_display.values('attribute'):
                 layers_attributes.append(values['attribute'])
@@ -343,8 +359,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             username = settings.OGC_SERVER['default']['USER']
             password = settings.OGC_SERVER['default']['PASSWORD']
             schema = get_schema(location, name, username=username, password=password)
-            print ("schema", schema)
-
 
             # get the name of the column which holds the geometry
             #geomName = schema.keys()[schema.values().index('Point')] or schema.keys()[schema.values().index('MultiLineString')]
@@ -364,7 +378,6 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
                     schema['properties'].pop(key, None)
 
             filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
-
             context_dict["schema"] = schema
             context_dict["filtered_attributes"] = filtered_attributes
 
@@ -378,13 +391,13 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
 # Loads the data using the OWS lib when the "Do you want to filter it" button is clicked.
 def load_layer_data(request, template='layers/layer_detail.html'):
 
+    import time
+    start_time = time.time()
     context_dict = {}
     data_dict = json.loads(request.POST.get('json_data'))
     layername = data_dict['layer_name']
     filtered_attributes = data_dict['filtered_attributes']
-
     workspace, name = layername.split(':')
-
     location = "{location}{service}".format(** {
         'location': settings.OGC_SERVER['default']['LOCATION'],
         'service': 'wms',
@@ -396,9 +409,13 @@ def load_layer_data(request, template='layers/layer_detail.html'):
         wfs = WebFeatureService(location, version='1.1.0', username=username, password=password)
 
         response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
-        features_response = json.dumps(json.loads(response.read()))
+
+        x = response.read()
+        x = json.loads(x)
+        features_response = json.dumps(x)
         decoded = json.loads(features_response)
         decoded_features = decoded['features']
+
 
         properties = {}
         for key in decoded_features[0]['properties']:
@@ -409,16 +426,19 @@ def load_layer_data(request, template='layers/layer_detail.html'):
 
         for i in range(len(decoded_features)):
             for key, value in decoded_features[i]['properties'].iteritems():
-                if (value not in properties[key] and value != '' and (isinstance(value, (str, int, float)))):
+                if value != '' and isinstance(value, (str, int, float)):
                     properties[key].append(value)
+
         for key in properties:
+            properties[key] = list(set(properties[key]))
             properties[key].sort()
+
         context_dict["feature_properties"] = properties
         print "OWSLib worked as expected"
 
     except:
         print "Possible error with OWSLib. Turning all available properties to string"
-
+    print("--- %s seconds ---" % (time.time() - start_time))
     return HttpResponse(json.dumps(context_dict), mimetype="application/json")
 
 
@@ -1156,6 +1176,10 @@ def download_csv(request):
 
 @login_required
 def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
+
+    import time
+    start_time = time.time()
+
     context_dict = {}
     layer = _resolve_layer(
         request,
@@ -1210,6 +1234,15 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
 
     filtered_attributes = list(set(layers_attributes).intersection(layer_attributes_schema))
 
+    # get the metadata description
+    attribute_description = {}
+    display_order_dict = {}
+    for idx, value in enumerate(filtered_attributes):
+        description = layer.attribute_set.values('description').filter(attribute=value)
+        display_order = layer.attribute_set.values('display_order').filter(attribute=value)
+        attribute_description[value] = description[0]['description']
+        display_order_dict[value] = display_order[0]['display_order']
+
     context_dict["schema"] = schema
 
     response = wfs.getfeature(typename=name, propertyname=filtered_attributes, outputFormat='application/json')
@@ -1218,13 +1251,23 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     decoded = json.loads(features_response)
     decoded_features = decoded['features']
 
+    # order the list and create ordered dictionary
+    import operator
+    display_order_list_sorted = sorted(display_order_dict.items(), key=operator.itemgetter(1))
+    from collections import OrderedDict
+    display_order_dict_sorted = OrderedDict(display_order_list_sorted)
+
+    # display_order_dict_sorted = dict(display_order_list_sorted)
     context_dict["feature_properties"] = json.dumps(decoded_features)
+    context_dict["attribute_description"] = json.dumps(attribute_description)
+    context_dict["display_order_dict_sorted"] = json.dumps(display_order_dict_sorted)
     context_dict["resource"] = layer
     context_dict["layer_name"] = json.dumps(name)
     context_dict["url"] = json.dumps(settings.OGC_SERVER['default']['LOCATION'])
     context_dict["site_url"] = json.dumps(settings.SITEURL)
     context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
 
+    print("--- %s seconds ---" % (time.time() - start_time))
     return render_to_response(template, RequestContext(request, context_dict))
 
 
@@ -1285,8 +1328,6 @@ def save_edits(request, template='layers/layer_edit_data.html'):
             'layer_name': layer_name,
             'feature_id': feature_id,
             'property_element': mark_safe(property_element)})).strip()
-
-    print ("xmlstr", xmlstr)
 
     headers = {'Content-Type': 'application/xml'}  # set what your server accepts
 
@@ -1434,7 +1475,7 @@ def update_bbox_and_seed(headers, layer_name, store_name):
         'store_name': store_name.strip(),
         'layer_name': layer_name
     })
-    print ("url", url)
+
     xmlstr = """<featureType><enabled>true</enabled></featureType>"""
     status_code_bbox = requests.put(url, headers=headers, data=xmlstr, auth=(settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])).status_code
 

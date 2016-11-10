@@ -3,6 +3,7 @@
 <article itemscope itemtype="http://schema.org/Dataset" class="description tab-pane active" id="info">
   <dl class="dl-horizontal">
     {% if resource.title %}
+
     <dt>{% trans "Title" %}</dt>
     <dd itemprop="name">{{ resource.title|truncatechars:80 }}</dd>
     {% endif %}
@@ -27,9 +28,9 @@
 
     {% if resource.abstract %}
     <dt>{% trans "Abstract" %}</dt>
-    <dd itemprop="description">{{ resource.abstract|escape|urlize|linebreaks|safe|truncatechars:500 }}</dd>
+    <dd itemprop="description">{{ resource.abstract|escape|urlize|linebreaks|safe|truncatechars:1000 }}</dd>
     {% endif %}
-    
+
     {% if resource.date %}
     <dt>{% trans resource.date_type|title %} {% trans "Date" %}</dt>
       {% if resource.date_type == 'creation' %}
@@ -57,7 +58,7 @@
       {% endfor %}
     </dd>
     {% endif %}
-          
+
     {% if resource.category %}
     <dt>{% trans "Category" %}</dt>
     <dd><a href="{% url "search" %}?category__identifier__in={{ resource.category.identifier }}">{{ resource.category }}</a> {% if resource.category.description %}<a href="#category-more" data-toggle="collapse" data-target=".category-more"><i class="fa fa-info-circle"></i></a>{% endif %}</dd>
@@ -67,7 +68,7 @@
       </dd>
       {% endif %}
     {% endif %}
-  
+
     {% if resource.regions.all %}
     <dt>{% trans "Regions" %}</dt>
     <dd itemprop="keywords">
@@ -79,7 +80,7 @@
       {% endfor %}
     </dd>
     {% endif %}
-  
+
     {% if resource.owner %}
     <dt>{% trans "Owner" %}</dt>
     <dd><a itemprop="author" href="{{ resource.owner.get_absolute_url }}">{{ resource.owner.username }}</a></dd>
@@ -89,6 +90,15 @@
     <dt>{% trans "Point of Contact" %}</dt>
     <dd><a href="{{ resource.poc.user.get_absolute_url }}">{{ resource.poc.user.username }}</a></dd>
     {% endif %}
+
+    {% if wms_url %}
+    <dt>{% trans "WMS URL" %}</dt>
+    <dd onclick="copyToClipboard(document.getElementById('btn_wms_url').getAttribute('data-href'))">
+      <a> {% trans "WMS URL" %} </a>
+      <i id="btn_wms_url" data-href="{{ wms_url }}" class="fa fa-clipboard" aria-hidden="true"></i>
+    </dd>
+    {% endif %}
+
   </dl>
 
   <dl class="dl-horizontal">
@@ -121,7 +131,7 @@
     <dt>{% trans "Maintenance Frequency" %}</dt>
     <dd>{{ resource.maintenance_frequency_title }}</dd>
     {% endif %}
-    
+
     {% if resource.restriction_code_type or resource.constraints_other %}
     <dt>{% trans "Restrictions" %}</dt>
     <dd>{% if resource.constraints_other %}
@@ -130,7 +140,7 @@
             {{ resource.restriction_code_type }}
         {% endif %}</dd>
     {% endif %}
-          
+
     {% if resource.edition %}
     <dt>{% trans "Edition" %}</dt>
     <dd>{{ resource.edition}}</dd>
@@ -171,3 +181,9 @@
   </dl>
 
 </article>
+
+<script type="text/javascript">
+  function copyToClipboard(text) {
+  window.prompt("Copy to clipboard: Ctrl+C, Enter", text);
+  }
+</script>

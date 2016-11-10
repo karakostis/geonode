@@ -28,6 +28,7 @@
             //if (tab == '#map' && !initialized){
             if (tab == '#map'){
                 map.invalidateSize();
+
                 {% if resource.bbox_string %}
                 zoom_to_box(map, [{{ resource.bbox_string }}]);
                 {% endif %}
@@ -51,8 +52,9 @@
                         transparent: true,
                         'opacity':0.8
                     });
-
                 {% endif %}
+              
+
                 if (tile_layer != null) {
 
                     map.addLayer(tile_layer);

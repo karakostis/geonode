@@ -208,7 +208,6 @@ class DocumentUploadView(CreateView):
                 bbox_x1=bbox_x1,
                 bbox_y0=bbox_y0,
                 bbox_y1=bbox_y1)
-
         if getattr(settings, 'SLACK_ENABLED', False):
             try:
                 from geonode.contrib.slack.utils import build_slack_message_document, send_slack_message
