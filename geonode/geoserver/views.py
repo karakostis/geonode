@@ -180,7 +180,6 @@ def layer_style_manage(request, layername):
             layer_styles = []
             for style in current_layer_styles:
                 layer_styles.append((style.name, style.sld_title))
-
             # Render the form
             return render_to_response(
                 'layers/layer_style_manage.html',
