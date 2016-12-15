@@ -255,6 +255,8 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         else llbbox_to_mercator([float(coord) for coord in bbox])
     config["title"] = layer.title
     config["queryable"] = True
+    config["tiled"] = False
+
 
     if layer.storeType == "remoteStore":
         service = layer.service
@@ -1218,11 +1220,11 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
         'Point': 'Point',
         'MultiPoint': 'Point',
         'MultiSurfacePropertyType': 'Polygon',
+        'MultiPolygon': 'Polygon',
         'MultiLineString': 'Linestring'
     }
     geom_type = schema.get('geometry') or schema['properties'].get('the_geom')
     context_dict["layer_geom"] = json.dumps(geom_dict.get(geom_type, 'unknown'))
-
     schema.pop("geometry")
     # remove the_geom/geom parameter
     if 'the_geom' in schema['properties']:
@@ -1267,10 +1269,10 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     context_dict["display_order_dict_sorted"] = json.dumps(display_order_dict_sorted)
     context_dict["resource"] = layer
     context_dict["layer_name"] = json.dumps(name)
+    context_dict["name"] = name
     context_dict["url"] = json.dumps(settings.OGC_SERVER['default']['LOCATION'])
     context_dict["site_url"] = json.dumps(settings.SITEURL)
     context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
-
     print("--- %s seconds ---" % (time.time() - start_time))
     return render_to_response(template, RequestContext(request, context_dict))
 

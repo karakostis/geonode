@@ -312,7 +312,6 @@ def map_view(request, mapid, snapshot=None, template='maps/map_view.html'):
         config = map_obj.viewer_json(request.user)
     else:
         config = snapshot_config(snapshot, map_obj, request.user)
-
     return render_to_response(template, RequestContext(request, {
         'config': json.dumps(config),
         'map': map_obj
@@ -504,7 +503,7 @@ def new_map_config(request):
                 # Add required parameters for GXP lazy-loading
                 config["title"] = layer.title
                 config["queryable"] = True
-
+                config["tiled"] = True
                 config["srs"] = getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:900913')
                 config["bbox"] = bbox if config["srs"] != 'EPSG:900913' \
                     else llbbox_to_mercator([float(coord) for coord in bbox])
@@ -566,6 +565,7 @@ def new_map_config(request):
             config['fromLayer'] = True
         else:
             config = DEFAULT_MAP_CONFIG
+
     return json.dumps(config)
 
 
