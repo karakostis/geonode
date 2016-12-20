@@ -73,16 +73,18 @@
               url: whole_url,
               data: { json_data: JSON.stringify({ data: data_to_send, feature_type: feature_type, layer_name: layer_name, coords:coords }) },
               beforeSend: function(){
-                $( ".loading_msg" ).show();
+                msg = "Saving...";
+                $("#icon_load_msg").text(msg);
+                $( ".icon_load" ).show();
                 $('#_ok_added_data').prop('disabled', true);
               },
               success: function(data) {
-                $( ".loading_msg" ).hide();
+                $( ".icon_load" ).hide();
                 $('#_ok_added_data').prop('disabled', false);
                 status_msg.empty();
                 if (data['success'] == true){
                   status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
-                  location.reload();
+                  location.reload(); // show the new row is displayed in the table
                 } else {
                   status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
                 }
@@ -90,6 +92,8 @@
             });
             add_geometry.data("coords", null);
           }
+        } else {
+          status_msg.append("<p class='alert alert-warning'> Please add a geometry by clicking Add Geometry button.</p></br>");
         }
       });
 
@@ -105,11 +109,17 @@
             url: whole_url,
             data: { json_data: JSON.stringify({ feature_id: feature_id, layer_name: layer_name, coords:coords }) },
             dataType: "json",
+            beforeSend: function(){
+              msg = "Saving...";
+              $("#icon_load_msg").text(msg);
+              $( ".icon_load" ).show();
+            },
             success: function(data) {
+              $( ".icon_load" ).hide();
               status_msg.empty();
               if (data['success'] == true){
                 status_msg.append("<p class='alert alert-success'>" + data['message'] + "</p></br>");
-                location.reload();
+                //location.reload();
               } else {
                 status_msg.append("<p class='alert alert-warning'>" + data['message'] + "</p></br>");
               }
@@ -122,6 +132,7 @@
 
       // close window without saving anything
       close_added_data.on("click",function(e){
+        add_geometry.data("coords", null);
       });
     });
 
@@ -192,8 +203,24 @@
 
   		      map.addControl(drawControl);
 
+            // disables the Save and Close btns when user is adding
+            $('.leaflet-draw-draw-marker, .leaflet-draw-draw-polyline, .leaflet-draw-draw-polygon').click(function() {
+               $('._modal_ok').attr("disabled", true);
+               $('#_close_added_data').attr("disabled", true);
+            });
+            // enables the Save and Close btns when user is editing and press cancell btn
+            map.on('draw:drawstop', function (e) {
+              $('._modal_ok').attr("disabled", false);
+              $('#_close_added_data').attr("disabled", false);
+            });
+            var numbers_of_features = 0;
         		map.on('draw:created', function (e) {
-              var numbers_of_features = 0;
+              // enables the Save and Close btns when user has added a new feature
+              $('._modal_ok').attr("disabled", false);
+              $('#_close_added_data').attr("disabled", false);
+
+              $("#status_modal_msg").empty();
+
               var coords = [];
               // allow to add only one feature
               if (numbers_of_features<1){
@@ -234,8 +261,9 @@
           			drawnItems.addLayer(layer);
                 add_geometry.data("coords", coords);
               } else {
-                //console.log("You can add only one feature");
-                add_geometry.data("coords", null);
+                console.log("You can add only one feature");
+                $("#status_modal_msg").append("<p class='alert alert-warning'>You can add only one feature</p></br>");
+                //add_geometry.data("coords", null);
               }
         		});
 
@@ -248,8 +276,7 @@
               $( ".leaflet-draw" ).remove();
             });
 
-            ok_added_data.click(function() {
-              map.removeLayer(drawnItems);
+            $("._modal_ok").click(function() {
               $( ".leaflet-draw" ).remove();
             });
 
@@ -320,12 +347,12 @@
                   onEachFeature: function (feature, layer) {
                     if (layer_geom == 'Point'){
                       map.setView([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], 10);
-                      console.log(feature.geometry.coordinates)
+                      //console.log(feature.geometry.coordinates)
                     } else {
                       {% if resource.bbox_string %}
                         zoom_to_box(map, [{{ resource.bbox_string }}]);
                       {% endif %}
-                      console.log(feature.geometry.coordinates)
+                      //console.log(feature.geometry.coordinates)
                     }
 
 
@@ -341,8 +368,21 @@
                 drawnItems.addLayer(e.layer);
             });
 
+            // disables the Save and Close btns when user is editing
+            $('.leaflet-draw-edit-edit').click(function() {
+               $('#_save_added_data').attr("disabled", true);
+               $('#_close_added_data').attr("disabled", true);
+            });
+            // enables the Save and Close btns when user is editing and press cancell btn
+            map.on('draw:editstop', function (e) {
+              $('#_save_added_data').attr("disabled", false);
+              $('#_close_added_data').attr("disabled", false);
+            });
 
             map.on('draw:edited', function (e) {
+              // enables the Save and Close btns when user has edited the point
+              $('#_save_added_data').attr("disabled", false);
+              $('#_close_added_data').attr("disabled", false);
               var layer = e.layers;
               var type = e.layerType;
               layer.eachLayer(function (layer) {

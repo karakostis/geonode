@@ -172,6 +172,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 # exceptions when unicode characters are present.
                 # This should be followed up in upstream Django.
                 tempdir, base_file = form.write_files()
+                print ("base_file", base_file)
 
                 #topic_id = request.POST['category']
                 #topic_category = TopicCategory.objects.get(
@@ -187,6 +188,7 @@ def layer_upload(request, template='upload/layer_upload.html'):
                     title=form.cleaned_data["layer_title"]  #,
                     # category=topic_category.identifier
                 )
+                print ("saved_layer", saved_layer)
             except Exception as e:
                 exception_type, error, tb = sys.exc_info()
                 logger.exception(e)
@@ -216,8 +218,10 @@ def layer_upload(request, template='upload/layer_upload.html'):
                 permissions = form.cleaned_data["permissions"]
                 if permissions is not None and len(permissions.keys()) > 0:
                     saved_layer.set_permissions(permissions)
+                print ("permissions", permissions)
             finally:
                 if tempdir is not None:
+                    print ("delete tempdir")
                     shutil.rmtree(tempdir)
         else:
             for e in form.errors.values():
@@ -251,6 +255,8 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         else llbbox_to_mercator([float(coord) for coord in bbox])
     config["title"] = layer.title
     config["queryable"] = True
+    config["tiled"] = False
+
 
     if layer.storeType == "remoteStore":
         service = layer.service
@@ -1214,11 +1220,11 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
         'Point': 'Point',
         'MultiPoint': 'Point',
         'MultiSurfacePropertyType': 'Polygon',
+        'MultiPolygon': 'Polygon',
         'MultiLineString': 'Linestring'
     }
     geom_type = schema.get('geometry') or schema['properties'].get('the_geom')
     context_dict["layer_geom"] = json.dumps(geom_dict.get(geom_type, 'unknown'))
-
     schema.pop("geometry")
     # remove the_geom/geom parameter
     if 'the_geom' in schema['properties']:
@@ -1263,10 +1269,10 @@ def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):
     context_dict["display_order_dict_sorted"] = json.dumps(display_order_dict_sorted)
     context_dict["resource"] = layer
     context_dict["layer_name"] = json.dumps(name)
+    context_dict["name"] = name
     context_dict["url"] = json.dumps(settings.OGC_SERVER['default']['LOCATION'])
     context_dict["site_url"] = json.dumps(settings.SITEURL)
     context_dict["default_workspace"] = json.dumps(settings.DEFAULT_WORKSPACE)
-
     print("--- %s seconds ---" % (time.time() - start_time))
     return render_to_response(template, RequestContext(request, context_dict))
 

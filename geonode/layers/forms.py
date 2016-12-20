@@ -156,11 +156,46 @@ class LayerUploadForm(forms.Form):
                 f = self.cleaned_data[field]
                 if f is not None:
                     path = os.path.join(tempdir, f.name)
+
+                    print ('path', path)
                     with open(path, 'wb') as writable:
                         for c in f.chunks():
                             writable.write(c)
+                    print ('field', field)
+
+                '''
+                if field == "sld_file":
+
+                    print ("this is sld file", path)
+                    import json
+                    import xmltodict
+
+                    document_file = open(path, "r")
+                    original_doc = document_file.read() # read the file object
+                    # convert xml to dict
+                    document = xmltodict.parse(original_doc)
+                    #convert dict to json
+                    jsonarray = json.dumps(document)
+                    # replace values
+                    jsonarray = jsonarray.replace("se:", "sld:")
+                    jsonarray = jsonarray.replace("SvgParameter", "CssParameter")
+
+
+                    # convert json to dict
+                    the_dict = json.loads(jsonarray)
+                    # convert dict to xml
+                    xml = xmltodict.unparse(the_dict)
+
+                    # write new content
+                    with open(path, "w") as f:
+                        xml = xml.replace("StyledLayerDescriptor", 'StyledLayerDescriptor xmlns:sld="http://www.opengis.net/sld"', 1)
+                        f.write(xml)
+
+                    print ("xml", xml)
+                    '''
             absolute_base_file = os.path.join(tempdir,
                                               self.cleaned_data["base_file"].name)
+            print ("absolute_base_file", absolute_base_file)
         return tempdir, absolute_base_file
 
 
