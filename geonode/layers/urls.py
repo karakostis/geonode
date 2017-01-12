@@ -32,6 +32,7 @@ urlpatterns = patterns(
     url(r'^upload$', 'layer_upload', name='layer_upload'),
     url(r'^create$', 'layer_create', name='layer_create'),
     url(r'^download_csv$', 'download_csv', name='download_csv'),
+    url(r'^get_settlements$', 'get_settlements', name='get_settlements'),
     url(r'^save_edits$', 'save_edits', name='save_edits'),
     url(r'^delete_edits$', 'delete_edits', name='delete_edits'),
     url(r'^load_layer_data$', 'load_layer_data', name='load_layer_data'),

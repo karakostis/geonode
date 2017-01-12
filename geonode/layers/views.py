@@ -66,7 +66,7 @@ from geonode.utils import GXPMap
 from geonode.layers.utils import file_upload, is_raster, is_vector, process_csv_file, create_empty_layer
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
-from geonode.layers.forms import UploadCSVForm, UploadEmptyLayerForm
+from geonode.layers.forms import UploadCSVForm, UploadEmptyLayerForm, UploadGazetteerForm
 
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
@@ -827,8 +827,10 @@ def layer_create(request, template='layers/layer_create.html'):
 
         form_csv_layer = UploadCSVForm()
         form_empty_layer = UploadEmptyLayerForm()
+        form_gazetteer_layer = UploadGazetteerForm()
         ctx['form_csv_layer'] = form_csv_layer
         ctx['form_empty_layer'] = form_empty_layer
+        ctx['form_gazetteer_layer'] = form_gazetteer_layer
         return render_to_response(template, RequestContext(request, ctx))
 
     elif request.method == 'POST':
@@ -1179,6 +1181,76 @@ def download_csv(request):
             fields = [field_1, field_2]
             writer.writerows([fields])
         return response
+
+
+@login_required
+def get_settlements(request):
+
+    keyword = request.POST['query']
+
+    # connect to esri_gn
+    constr = "dbname='{dbname}' user='{user}' host='{host}' password='{password}'".format(** {
+        'dbname': 'esri_gn',
+        'user': 'postgres',
+        'host': '10.11.40.221',
+        'password': 'sdiprod2014'
+    })
+
+    #conn = psycopg2.connect(constr)
+    #cur = conn.cursor()
+    try:
+        print ("connecting")
+        conn = psycopg2.connect(constr)
+        #cur = conn.cursor()
+        cur = conn.cursor('cursor-name')
+        print conn.isolation_level
+        print conn.closed
+
+        cur.itersize = 10000
+        #sqlstr = "SELECT DISTINCT geonameid, wfpname FROM geonames.geonames_extract WHERE wfpname LIKE 'Athe%' ORDER BY 1"
+        sqlstr = "SELECT DISTINCT geonameid, wfpname FROM geonames.geonames_extract WHERE wfpname LIKE '{keyword}%' ORDER BY 1".format(** {
+            'keyword': keyword
+        })
+        cur.execute(sqlstr)
+        print sqlstr
+
+        #row = cur.fetchmany(65)
+        #print row
+        #row = cur.fetchmany(40)
+        #print row
+
+
+        settlement_list = []
+        row = cur.fetchone()
+        json_dict_2 = {'settlements': settlement_list}
+        print (json_dict_2)
+        while row:
+            #print(row)
+            # do something with row
+            row = cur.fetchone()
+            settlement_list.append({'settlement_name': row[1]})
+
+        cur.close()
+        conn.close()
+    except:
+        print "Not able to Connect"
+
+
+    if request.method == 'GET':
+        message = "This is the settlement"
+        success = True
+
+    json_dict = {
+        'settlements': [{"settlement_name": "admin"}, {"settlement_name": "another_user_2"}, {"settlement_name": "another_user"}],
+    }
+
+    return HttpResponse(
+        content=json.dumps(json_dict_2),
+        mimetype='text/plain'
+    )
+    #return HttpResponse(json.dumps({'success': success, 'message': message}), mimetype="application/json")
+
+
 
 @login_required
 def layer_edit_data(request, layername, template='layers/layer_edit_data.html'):

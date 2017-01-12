@@ -313,8 +313,6 @@ class UploadCSVForm(forms.Form):
                     writable.write(c)
         absolute_base_file = os.path.join(tempdir,self.cleaned_data["csv"].name)
 
-
-
         return tempdir, absolute_base_file
 
 
@@ -364,3 +362,12 @@ class UploadEmptyLayerForm(forms.Form):
             # generate extra fields in the number specified via extra_fields
             self.fields['extra_field_{index}'.format(index=index)] = forms.CharField(min_length=3, max_length=15, label="Attribute %s" % index)
             self.fields['field_type_{index}'.format(index=index)] = forms.ChoiceField(choices=FIELD_TYPE, label="")
+
+
+class UploadGazetteerForm(forms.Form):
+
+    gazetteer_layer_name = forms.CharField(max_length=80, required=True, label="Name of new Layer")
+    permissions_json = forms.CharField(max_length=500, widget=forms.HiddenInput()) #  stores the permissions json from the permissions form
+
+    def __init__(self, *args, **kwargs):
+        super(UploadGazetteerForm, self).__init__(*args, **kwargs)
