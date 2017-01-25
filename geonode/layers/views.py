@@ -405,9 +405,12 @@ def layer_feature_catalogue(request, layername, template='../../catalogue/templa
     attributes = []
 
     for attrset in layer.attribute_set.all():
+        description = Attribute.objects.filter(layer_id=layer.id, attribute=attrset.attribute).values('description')
+
         attr = {
             'name': attrset.attribute,
-            'type': attrset.attribute_type
+            'type': attrset.attribute_type,
+            'description': description[0]["description"]
         }
         attributes.append(attr)
 
@@ -417,7 +420,7 @@ def layer_feature_catalogue(request, layername, template='../../catalogue/templa
         'metadata': settings.PYCSW['CONFIGURATION']['metadata:main']
     }
     return render_to_response(template, context_dict, content_type='application/xml')
-    
+
 # Loads the data using the OWS lib when the "Do you want to filter it" button is clicked.
 def load_layer_data(request, template='layers/layer_detail.html'):
 

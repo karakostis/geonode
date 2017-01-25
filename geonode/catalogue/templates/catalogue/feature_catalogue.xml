@@ -46,6 +46,9 @@
           <gfc:memberName>
             <gco:LocalName>{{ attribute.name }}</gco:LocalName>
           </gfc:memberName>
+          <gfc:definition>
+			<gco:CharacterString>{{ attribute.description }}</gco:CharacterString>
+		  </gfc:definition>
           <gfc:cardinality>
             <gco:Multiplicity>
               <gco:range>
