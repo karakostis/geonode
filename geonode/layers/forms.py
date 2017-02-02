@@ -299,22 +299,17 @@ class UploadCSVForm(forms.Form):
     csv = forms.FileField(required=True)
     permissions_json = forms.CharField(max_length=500, widget=forms.HiddenInput()) #  stores the permissions json from the permissions form
 
-    def write_files(self):
 
+    def write_files(self):
         absolute_base_file = None
         tempdir = tempfile.mkdtemp()
-
         f = self.cleaned_data['csv']
-
         if f is not None:
             path = os.path.join(tempdir, f.name)
             with open(path, 'wb') as writable:
                 for c in f.chunks():
                     writable.write(c)
         absolute_base_file = os.path.join(tempdir,self.cleaned_data["csv"].name)
-
-
-
         return tempdir, absolute_base_file
 
 

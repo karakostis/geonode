@@ -682,11 +682,16 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None, 
 
 def process_csv_file(absolute_base_file, table_name_temp, new_table, geom_table_name, geom_table_id, geom_table_columns, geom_table_geom):
     # Create table based on CSV
+    import csv
     f = open(absolute_base_file, 'rb')
-    delimiter = ","
     no_header_row = False
+
+    with open(absolute_base_file, 'rb') as csvfile:
+        # get the type of delimiter
+        dialect = csv.Sniffer().sniff(csvfile.read())
+
     try:
-        csv_table = table.Table.from_csv(f, name=table_name_temp, no_header_row=no_header_row, delimiter=delimiter)
+        csv_table = table.Table.from_csv(f, name=table_name_temp, no_header_row=no_header_row, delimiter=dialect.delimiter)
     except:
         status_code = '400'
         errormsgs_val = "Failed to create the table from CSV."

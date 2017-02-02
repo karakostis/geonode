@@ -383,6 +383,7 @@
     });
 
     $(document.body).on("click", "._add_save_btn",function(e){
+      $("#status_modal_msg").empty();
       $("#add_geometry").data("clicked_btn", this.id);
       $('#tabContent_add_geom').show();
       $('.tab-content-add-map').show();

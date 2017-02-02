@@ -214,11 +214,53 @@
               $('#_close_added_data').attr("disabled", false);
             });
             var numbers_of_features = 0;
+
+            map.on('draw:edited', function (e) {
+
+
+              var coords = [];
+              var layer = e.layers;
+              var type = e.layerType;
+              layer.eachLayer(function (layer) {
+                  if (layer instanceof L.Marker){
+                    var lat_long = layer.getLatLng();
+                    coords = [lat_long['lat'], lat_long['lng']]
+                    console.log(layer)
+                  } else if (layer instanceof L.Polygon) {
+                    coords = []
+                    var lat_long = layer.getLatLngs();
+                    for (i=0;i<lat_long.length;i++){
+                      coords.push(lat_long[i]['lat'])
+                      coords.push(lat_long[i]['lng'])
+                    }
+                    // close polygon
+                    coords.push(lat_long[0]['lat'])
+                    coords.push(lat_long[0]['lng'])
+                  } else if (layer instanceof L.Path) {
+                    coords = []
+                    var lat_long = layer.getLatLngs();
+                    for (i=0;i<lat_long.length;i++){
+                      coords.push(lat_long[i]['lat'])
+                      coords.push(lat_long[i]['lng'])
+                    }
+                  }
+                  added_geometry = JSON.stringify(layer.toGeoJSON());
+                  added_geometry = JSON.parse(added_geometry);
+                  feature_type = added_geometry["geometry"]["type"]
+                  coords = added_geometry["geometry"]["coordinates"]
+                  coords = $.map(coords, function(n) {
+                     return n;
+                  });
+                  drawnItems.addLayer(layer);
+                  add_geometry.data("coords", coords);
+              });
+            });
+
+
         		map.on('draw:created', function (e) {
               // enables the Save and Close btns when user has added a new feature
               $('._modal_ok').attr("disabled", false);
               $('#_close_added_data').attr("disabled", false);
-
               $("#status_modal_msg").empty();
 
               var coords = [];
@@ -261,7 +303,6 @@
           			drawnItems.addLayer(layer);
                 add_geometry.data("coords", coords);
               } else {
-                console.log("You can add only one feature");
                 $("#status_modal_msg").append("<p class='alert alert-warning'>You can add only one feature</p></br>");
                 //add_geometry.data("coords", null);
               }
