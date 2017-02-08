@@ -335,7 +335,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         context_dict["social_links"] = build_social_links(request, layer)
 
     layers_names = layer.typename
-    workspace, name = layers_names.split(':')
+    workspace, name = layers_names.split(':', 1)
     context_dict["layer_name"] = json.dumps(layers_names)
 
     try:
