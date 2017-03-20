@@ -337,7 +337,6 @@ def _register_cascaded_service(url, type, name, username, password, wms=None, ow
     service.keywords = ','.join(wms.identification.keywords)
     service.save()
     service.set_default_permissions()
-
     if type in ['WMS', 'OWS']:
         # Register the Service with GeoServer to be cascaded
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest",
