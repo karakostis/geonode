@@ -10,6 +10,7 @@ autocomplete_light.register(Region,
 
 autocomplete_light.register(ResourceBase,
                             search_fields=['title'],
+                            choices=ResourceBase.objects.filter(detail_url__contains='/layers/'),
                             autocomplete_js_attributes={'placeholder': 'Resource name..', },)
 
 autocomplete_light.register(Tag,
