@@ -335,7 +335,21 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         context_dict["social_links"] = build_social_links(request, layer)
 
     layers_names = layer.typename
-    workspace, name = layers_names.split(':', 1)
+
+    try:
+        if 'geonode' in layers_names:
+            workspace, name = layers_names.split(':', 1)
+            print ("tutto bene")
+            print ("workspace", workspace)
+            print ("layers_names", layers_names)
+        else:
+            workspace = "arc"
+            name = layers_names
+            print ("workspace", workspace)
+            print ("layers_names", layers_names)
+    except:
+        print "Can not identify workspace type and layername"
+
     context_dict["layer_name"] = json.dumps(layers_names)
 
     try:
