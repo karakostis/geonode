@@ -1301,3 +1301,22 @@ def create_arcgis_links(instance):
     thumbnail_remote_url = instance.ows_url + 'export?LAYERS=show%3A' + str(instance.typename) + \
         '&TRANSPARENT=true&FORMAT=png&BBOX=' + bbox + '&SIZE=200%2C150&F=image&BBOXSR=4326&IMAGESR=3857'
     create_thumbnail(instance, thumbnail_remote_url)
+
+
+# functionality added to get layers from remote geoserver
+def get_layers(request, template='layers/service_register.html'):
+    context_dict = {}
+    available_layers = []
+    data_dict = json.loads(request.POST.get('json_data'))
+    service_url = data_dict['service_url']
+    wms = WebMapService(service_url)
+    #wms = wms or WebMapService(service_url)
+    #wms = WebMapService("http://training.geonode.wfp.org/geoserver/ows")
+
+    for layer in list(wms.contents):
+        available_layers.append(layer)
+        #print ("layer", layer)
+
+    context_dict["layers"] = available_layers
+
+    return HttpResponse(json.dumps(context_dict), mimetype="application/json")

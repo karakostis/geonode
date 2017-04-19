@@ -4,6 +4,145 @@
 
 {% block head %}
 {{ block.super }}
+
+<style>
+  .margin-top-50 {
+  margin-top: 50px;}
+  /*Filter START*/
+  .filterable {
+  margin-top: 15px;
+  }
+  .filterable .panel-heading .pull-right {
+  margin-top: -20px;
+  }
+  .filterable .filters input[disabled] {
+  background-color: transparent;
+  border: none;
+  cursor: auto;
+  box-shadow: none;
+  padding: 0;
+  height: auto;
+  }
+  .filterable .filters input[disabled]::-webkit-input-placeholder {
+  color: #333;
+  }
+  .filterable .filters input[disabled]::-moz-placeholder {
+  color: #333;
+  }
+  .filterable .filters input[disabled]:-ms-input-placeholder {
+  color: #333;
+  }
+  /*Filter END*/
+
+  .table-widthB{
+  width: 48%;
+  }
+
+  .table-widthA{
+  width: 49.8%;
+  }
+
+  .bg{
+  background-color: white;
+  }
+
+  .tablescroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 189px;
+  margin-right: 1px;
+  }
+  .marginTop30{
+  margin-top:30px;
+  }
+
+  .radio,
+  .checkbox {
+  margin-top: 0px;
+  margin-bottom: 0px;
+  }
+
+  .checkbox,.radio{
+  margin-top:0px;
+  margin-bottom:0px
+  }
+
+  .radio-margin{
+  margin-left: -13px;
+  margin-top: 7px;
+  }
+  .radio-margin{
+  margin-left: -13px;
+  margin-top: 7px;
+  }
+  .EU_DataTable td, th {
+  padding: 6px;
+  border: 1px solid #ccc;
+  text-align: left;
+  height: 50px;
+  }
+  th {
+  background: #e5e5e5;
+  color: #454545;
+  font-weight: bold;
+  height: 40px;
+  }
+  /*Radio and Checkbox START*/
+  .checkbox label:after,
+  .radio label:after {
+  content: '';
+  display: table;
+  clear: both;
+  }
+
+  .checkbox .cr,
+  .radio .cr {
+  position: relative;
+  display: inline-block;
+  border: 1px solid #a9a9a9;
+  border-radius: .25em;
+  width: 1.3em;
+  height: 1.3em;
+  float: left;
+  margin-right: .5em;
+  }
+
+  .radio .cr {
+  border-radius: 50%;
+  }
+
+  .checkbox .cr .cr-icon,
+  .radio .cr .cr-icon {
+  position: absolute;
+  font-size: .8em;
+  line-height: 0;
+  top: 50%;
+  left: 20%;
+  }
+
+  .checkbox label input[type="checkbox"],
+  .radio label input[type="radio"] {
+  display: none;
+  }
+
+  .checkbox label input[type="checkbox"] + .cr > .cr-icon,
+  .radio label input[type="radio"] + .cr > .cr-icon {
+  transform: scale(3) rotateZ(-20deg);
+  opacity: 0;
+  transition: all .3s ease-in;
+  }
+
+  .checkbox label input[type="checkbox"]:checked + .cr > .cr-icon,
+  .radio label input[type="radio"]:checked + .cr > .cr-icon {
+  transform: scale(1) rotateZ(0deg);
+  opacity: 1;
+  }
+
+  .checkbox label input[type="checkbox"]:disabled + .cr,
+  .radio label input[type="radio"]:disabled + .cr {
+  opacity: .5;
+  }
+</style>
 {% endblock %}
 
 {% block title %} Register Service - {{ block.super }} {% endblock %}
@@ -15,9 +154,42 @@
     <form method="POST" id="service_register_form">
     {% csrf_token %}
     {{ create_service_form|as_bootstrap }}
-
+    <div align="center"><p><input type="button" class="btn btn-primary pull-left" id="get_layers_button" value="{% trans "Get Layers" %}" style="margin-right:5px" /></p></div>
     <div align="center"><p><input type="submit" class="btn btn-primary pull-left" id="submit_button" value="{% trans "Create" %}" /></p></div>
     </form>
+
+    <div class="row margin-top-50">
+		  <div class="col-md-12">
+        <div class="panel panel-primary filterable">
+          <div class="panel-heading">
+            <h3 class="panel-title">Available Layers<span style="color: white; font-weight: bold;"> </span></h3>
+              <div class="pull-right">
+                <button type="button" class="btn btn-default btn-xs btn-filter"><span class="glyphicon glyphicon-filter"></span> Filter</button>
+              </div>
+          </div>
+          <table class="span12">
+            <table>
+              <tr class="filters">
+                <th style="width: 4.1%; width:50px;">
+                <div class="checkbox radio-margin">
+                  <label>
+                    <input type="checkbox" value="">
+                    <span class="cr"><i class="cr-icon glyphicon glyphicon-ok"></i></span>
+                  </label>
+                </div>
+                </th>
+                <th style="width: 98%">
+                  <input type="text" class="form-control" placeholder="Layer Name" disabled>
+                </th>
+              </tr>
+            </table>
+            <div class="bg tablescroll">
+              <table id="available_layers" class="table table-bordered table-striped"></table>
+            </div>
+          </table>
+        </div>
+      </div>
+    </div>
 
     <div id="responseDiv" style="display:none;">
         <h4>{%  trans "Service has been created:" %}</h4>
@@ -34,6 +206,28 @@
 {% block extra_script %}
 <script type="text/javascript">
     $( document ).ready(function() {
+        // functionality added to retrieve available layers
+        $("#get_layers_button").click(function(e) {
+          $( "#available_layers" ).empty();
+          var service_url = $('#id_url').val();
+
+          whole_url = "{% url 'get_layers' %}"
+
+          $.ajax({
+            type: "POST",
+            url: whole_url,
+            data: { json_data: JSON.stringify({ service_url: service_url }) },
+            success: function(data) {
+              available_layers = data['layers'];
+              for (i = 0; i < available_layers.length; i++) {
+                $( "#available_layers" ).append('<tr><td style="width: 4.1%; width:50px;"><div class="checkbox radio-margin"><label><input type="checkbox" value=""><span class="cr"><i class="cr-icon glyphicon glyphicon-ok"></i></span></label></div></th><td style="width: 99.8%">' + available_layers[i] + '</th></tr>');
+              }
+            },
+            error: function(data) {
+            },
+          });
+        });
+
         $("#service_register_form").submit(function(e) {
             var service_name_regexp = new RegExp('^[a-zA-Z]+[a-zA-Z0-9-_\.]*$');
             if(!service_name_regexp.test($("#id_name").val())) {
@@ -55,7 +249,7 @@
                 type: "POST",
                 url: url,
                 dataType: "json",
-                data: $("#service_register_form").serialize(), // serializes the form's elements.
+                data: $("#service_register_form").serialize() + "&par1=1&par2=2&par3=232", // serializes the form's elements.
                 progress: function(jqXHR, progressEvent) {
                     if (progressEvent.lengthComputable) {
                         console.log("Importing service and layers - " + (Math.round(progressEvent.loaded / progressEvent.total * 100)) + "%");
