@@ -97,13 +97,20 @@ def register_service(request):
     elif request.method == 'POST':
         # Register a new Service
         service_form = CreateServiceForm(request.POST)
+
+        # get all the layers to be registered
+        layers_to_register = []
+        for key, value in request.POST.items():
+            if key.startswith('layer'):
+                layers_to_register.append(value)
+
         if service_form.is_valid():
             url = _clean_url(service_form.cleaned_data['url'])
-
         # method = request.POST.get('method')
         # type = request.POST.get('type')
         # name = slugify(request.POST.get('name'))
-            name = service_form.cleaned_data['name']
+            #d: use as name the hostname of the url
+            name = urlparse.urlparse(url).hostname
             type = service_form.cleaned_data["type"]
             server = None
             if type == "AUTO":
@@ -120,7 +127,7 @@ def register_service(request):
                 password = None
 
             if type in ["WMS", "OWS"]:
-                return _process_wms_service(url, name, type, user, password, wms=server, owner=request.user)
+                return _process_wms_service(url, name, type, user, password, layers_to_register, wms=server, owner=request.user)
             elif type == "REST":
                 return _register_arcgis_url(url, name, user, password, owner=request.user)
             elif type == "CSW":
@@ -254,10 +261,11 @@ def _verify_service_type(base_url, service_type=None):
     return [None, None]
 
 
-def _process_wms_service(url, name, type, username, password, wms=None, owner=None, parent=None):
+def _process_wms_service(url, name, type, username, password, layers_to_register, wms=None, owner=None, parent=None ):
     """
     Create a new WMS/OWS service, cascade it if necessary (i.e. if Web Mercator not available)
     """
+
     if wms is None:
         wms = WebMapService(url)
     try:
@@ -280,6 +288,8 @@ def _process_wms_service(url, name, type, username, password, wms=None, owner=No
                         'service_name': service.name,
                         'service_title': service.title
                         }]
+        # d: since the service already exist - add the new layers in it executing directly the _register_indexed_layers
+        _register_indexed_layers(service, layers_to_register, wms=wms)
         return HttpResponse(json.dumps(return_dict),
                             mimetype='application/json',
                             status=200)
@@ -296,8 +306,8 @@ def _process_wms_service(url, name, type, username, password, wms=None, owner=No
         supported_crs = ','.join(wms.contents.itervalues().next().crsOptions)
     except:
         supported_crs = None
-    if supported_crs and re.search('EPSG:900913|EPSG:3857|EPSG:102100|EPSG:102113', supported_crs):
-        return _register_indexed_service(type, url, name, username, password, wms=wms, owner=owner, parent=parent)
+    if supported_crs and re.search('EPSG:4326|EPSG:900913|EPSG:3857|EPSG:102100|EPSG:102113', supported_crs):
+        return _register_indexed_service(type, url, name, username, password, layers_to_register, wms=wms, owner=owner, parent=parent)
     else:
         return _register_cascaded_service(url, type, name, username, password, wms=wms, owner=owner, parent=parent)
 
@@ -509,7 +519,7 @@ def _register_cascaded_layers(service, owner=None):
         return HttpResponse('Invalid Service Type', status=400)
 
 
-def _register_indexed_service(type, url, name, username, password, verbosity=False, wms=None, owner=None, parent=None):
+def _register_indexed_service(type, url, name, username, password, layers_to_register, verbosity=False, wms=None, owner=None, parent=None):
     """
     Register a service - WMS or OWS currently supported
     """
@@ -555,8 +565,7 @@ def _register_indexed_service(type, url, name, username, password, verbosity=Fal
             # Create a layer import job
             WebServiceHarvestLayersJob.objects.get_or_create(service=service)
         else:
-            _register_indexed_layers(service, wms=wms)
-
+            _register_indexed_layers(service, layers_to_register, wms=wms)
         message = "Service %s registered" % service.name
         return_dict = [{'status': 'ok',
                         'msg': message,
@@ -580,7 +589,7 @@ def _register_indexed_service(type, url, name, username, password, verbosity=Fal
             status=400)
 
 
-def _register_indexed_layers(service, wms=None, verbosity=False):
+def _register_indexed_layers(service, layers_to_register, wms=None, verbosity=False):
     """
     Register layers for an indexed service (only WMS/OWS currently supported)
     """
@@ -588,7 +597,7 @@ def _register_indexed_layers(service, wms=None, verbosity=False):
     if re.match("WMS|OWS", service.type):
         wms = wms or WebMapService(service.base_url)
         count = 0
-        for layer in list(wms.contents):
+        for layer in layers_to_register:
             wms_layer = wms[layer]
             if wms_layer is None or wms_layer.name is None:
                 continue
@@ -612,7 +621,7 @@ def _register_indexed_layers(service, wms=None, verbosity=False):
                 srid = 'EPSG:900913'
             elif len(wms_layer.crsOptions) > 0:
                 matches = re.findall(
-                    'EPSG\:(3857|102100|102113)', ' '.join(wms_layer.crsOptions))
+                    'EPSG\:(4326|3857|102100|102113)', ' '.join(wms_layer.crsOptions))
                 if matches:
                     srid = 'EPSG:%s' % matches[0]
             if srid is None:
@@ -660,6 +669,9 @@ def _register_indexed_layers(service, wms=None, verbosity=False):
                 service_layer.description = wms_layer.abstract
                 service_layer.styles = wms_layer.styles
                 service_layer.save()
+
+                create_indexed_links(saved_layer, service)
+
             count += 1
         message = "%d Layers Registered" % count
         return_dict = {'status': 'ok', 'msg': message}
@@ -1297,3 +1309,97 @@ def create_arcgis_links(instance):
     thumbnail_remote_url = instance.ows_url + 'export?LAYERS=show%3A' + str(instance.typename) + \
         '&TRANSPARENT=true&FORMAT=png&BBOX=' + bbox + '&SIZE=200%2C150&F=image&BBOXSR=4326&IMAGESR=3857'
     create_thumbnail(instance, thumbnail_remote_url)
+
+
+# d:functionality added to get layers from remote geoserver
+def get_layers(request, template='layers/service_register.html'):
+    context_dict = {}
+    available_layers = []
+    existing_layers = []
+    data_dict = json.loads(request.POST.get('json_data'))
+    service_url = data_dict['service_url']
+    wms = WebMapService(service_url)
+    for layer in list(wms.contents):
+        available_layers.append(layer)
+        # check if service exists, if exists check if layer exists and return a flag
+        try:
+            service_layer = ServiceLayer.objects.filter(typename=layer).exists()
+            if service_layer:
+                existing_layers.append(layer)
+        except:
+            pass
+
+    context_dict["layers"] = available_layers
+    context_dict["existing_layers"] = existing_layers
+
+    return HttpResponse(json.dumps(context_dict), mimetype="application/json")
+
+# d:functionality to add links for the created remote layers
+def create_indexed_links(instance, service):
+
+    layer_name = instance.name
+    # Create legend.
+    legend_url_main = instance.ows_url
+    legend_url_main = legend_url_main.replace('ows', 'wms')
+    legend_url_param = "?request=GetLegendGraphic&format=image/png&WIDTH=20&HEIGHT=20&LAYER={layer_name}&legend_options=fontAntiAliasing:true;fontSize:12;forceLabels:on".format(** {
+        'layer_name': layer_name,
+    })
+    legend_url = legend_url_main + legend_url_param
+
+    Link.objects.get_or_create(resource=instance.get_self_resource(),
+                               url=legend_url,
+                               defaults=dict(
+        extension='json',
+        name=_('Legend'),
+        url=legend_url,
+        mime='application/json',
+        link_type='image',
+    )
+    )
+
+    # Create thumbnails.
+    bbox = urllib.pathname2url('%s,%s,%s,%s' % (instance.bbox_x0, instance.bbox_y0, instance.bbox_x1, instance.bbox_y1))
+    thumbnail_remote_url_main = instance.ows_url
+    thumbnail_remote_url_main = thumbnail_remote_url_main.replace('ows', 'wms')
+    thumbnail_remote_url_param = "/reflect?layers={layer_name}&width=200&height=150".format(** {
+        'layer_name': layer_name,
+    })
+    thumbnail_remote_url = thumbnail_remote_url_main + thumbnail_remote_url_param
+    create_thumbnail(instance, thumbnail_remote_url)
+
+
+    # d:Create kml link
+    kml_link_main = instance.ows_url + '?f=kmz'
+
+    kml_url_param = "?format_options=charset:UTF-8&typename={layer_name}&outputFormat=kml&version=1.0.0&service=WFS&request=GetFeature".format(** {
+        'layer_name': layer_name,
+    })
+    kml_link = kml_link_main + kml_url_param
+
+    Link.objects.get_or_create(resource=instance.get_self_resource(),
+                               url=kml_link,
+                               defaults=dict(
+        extension='kml',
+        name="KML",
+        mime='text/xml',
+        link_type='data',
+    )
+    )
+
+    if re.match("OWS", service.type):
+
+        shp_link_main = instance.ows_url
+        shp_url_param = "?format_options=charset:UTF-8&typename={layer_name}&outputFormat=SHAPE-ZIP&version=1.0.0&service=WFS&request=GetFeature".format(** {
+            'layer_name': layer_name,
+        })
+        shp_link = shp_link_main + shp_url_param
+
+        Link.objects.get_or_create(resource=instance.get_self_resource(),
+                                   url=shp_link,
+                                   defaults=dict(
+            extension='zip',
+            name="Zipped Shapefile",
+            mime='SHAPE-ZIP',
+            link_type='data',
+        )
+        )
