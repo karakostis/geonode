@@ -343,7 +343,8 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
             print ("workspace", workspace)
             print ("layers_names", layers_names)
         else:
-            workspace = "arc"
+            #workspace = "arc"
+            workspace = ""
             name = layers_names
             print ("workspace", workspace)
             print ("layers_names", layers_names)

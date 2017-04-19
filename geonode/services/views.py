@@ -296,9 +296,11 @@ def _process_wms_service(url, name, type, username, password, wms=None, owner=No
         supported_crs = ','.join(wms.contents.itervalues().next().crsOptions)
     except:
         supported_crs = None
-    if supported_crs and re.search('EPSG:900913|EPSG:3857|EPSG:102100|EPSG:102113', supported_crs):
+    if supported_crs and re.search('EPSG:4326|EPSG:900913|EPSG:3857|EPSG:102100|EPSG:102113', supported_crs):
+        print ("indexed_service")
         return _register_indexed_service(type, url, name, username, password, wms=wms, owner=owner, parent=parent)
     else:
+        print ("cascaded_service")
         return _register_cascaded_service(url, type, name, username, password, wms=wms, owner=owner, parent=parent)
 
 
@@ -514,6 +516,7 @@ def _register_indexed_service(type, url, name, username, password, verbosity=Fal
     Register a service - WMS or OWS currently supported
     """
     if type in ['WMS', "OWS", "HGL"]:
+        print ("its wms")
         # TODO: Handle for errors from owslib
         if wms is None:
             wms = WebMapService(url)
@@ -556,7 +559,7 @@ def _register_indexed_service(type, url, name, username, password, verbosity=Fal
             WebServiceHarvestLayersJob.objects.get_or_create(service=service)
         else:
             _register_indexed_layers(service, wms=wms)
-
+            print("_register_indexed_layers")
         message = "Service %s registered" % service.name
         return_dict = [{'status': 'ok',
                         'msg': message,
@@ -589,6 +592,7 @@ def _register_indexed_layers(service, wms=None, verbosity=False):
         wms = wms or WebMapService(service.base_url)
         count = 0
         for layer in list(wms.contents):
+            print ("layer", layer)
             wms_layer = wms[layer]
             if wms_layer is None or wms_layer.name is None:
                 continue
@@ -612,7 +616,7 @@ def _register_indexed_layers(service, wms=None, verbosity=False):
                 srid = 'EPSG:900913'
             elif len(wms_layer.crsOptions) > 0:
                 matches = re.findall(
-                    'EPSG\:(3857|102100|102113)', ' '.join(wms_layer.crsOptions))
+                    'EPSG\:(4326|3857|102100|102113)', ' '.join(wms_layer.crsOptions))
                 if matches:
                     srid = 'EPSG:%s' % matches[0]
             if srid is None:
