@@ -97,9 +97,17 @@ def register_service(request):
     elif request.method == 'POST':
         # Register a new Service
         service_form = CreateServiceForm(request.POST)
+
+        # get all the layers to be registered
+        layers_to_register = []
+        for key, value in request.POST.items():
+            if key.startswith('layer'):
+                layers_to_register.append(value)
+
+        print(layers_to_register)
+
         if service_form.is_valid():
             url = _clean_url(service_form.cleaned_data['url'])
-
         # method = request.POST.get('method')
         # type = request.POST.get('type')
         # name = slugify(request.POST.get('name'))
@@ -120,7 +128,7 @@ def register_service(request):
                 password = None
 
             if type in ["WMS", "OWS"]:
-                return _process_wms_service(url, name, type, user, password, wms=server, owner=request.user)
+                return _process_wms_service(url, name, type, user, password, layers_to_register, wms=server, owner=request.user)
             elif type == "REST":
                 return _register_arcgis_url(url, name, user, password, owner=request.user)
             elif type == "CSW":
@@ -254,10 +262,11 @@ def _verify_service_type(base_url, service_type=None):
     return [None, None]
 
 
-def _process_wms_service(url, name, type, username, password, wms=None, owner=None, parent=None):
+def _process_wms_service(url, name, type, username, password, layers_to_register, wms=None, owner=None, parent=None ):
     """
     Create a new WMS/OWS service, cascade it if necessary (i.e. if Web Mercator not available)
     """
+
     if wms is None:
         wms = WebMapService(url)
     try:
@@ -280,10 +289,13 @@ def _process_wms_service(url, name, type, username, password, wms=None, owner=No
                         'service_name': service.name,
                         'service_title': service.title
                         }]
+        # since the service already exist - add the new layers in it executing directly the _register_indexed_layers
+        _register_indexed_layers(service, layers_to_register, wms=wms)
         return HttpResponse(json.dumps(return_dict),
                             mimetype='application/json',
                             status=200)
     except:
+        print ("we are talking about an existing layer here dude")
         pass
 
     title = wms.identification.title
@@ -298,7 +310,7 @@ def _process_wms_service(url, name, type, username, password, wms=None, owner=No
         supported_crs = None
     if supported_crs and re.search('EPSG:4326|EPSG:900913|EPSG:3857|EPSG:102100|EPSG:102113', supported_crs):
         print ("indexed_service")
-        return _register_indexed_service(type, url, name, username, password, wms=wms, owner=owner, parent=parent)
+        return _register_indexed_service(type, url, name, username, password, layers_to_register, wms=wms, owner=owner, parent=parent)
     else:
         print ("cascaded_service")
         return _register_cascaded_service(url, type, name, username, password, wms=wms, owner=owner, parent=parent)
@@ -511,7 +523,7 @@ def _register_cascaded_layers(service, owner=None):
         return HttpResponse('Invalid Service Type', status=400)
 
 
-def _register_indexed_service(type, url, name, username, password, verbosity=False, wms=None, owner=None, parent=None):
+def _register_indexed_service(type, url, name, username, password, layers_to_register, verbosity=False, wms=None, owner=None, parent=None):
     """
     Register a service - WMS or OWS currently supported
     """
@@ -558,7 +570,7 @@ def _register_indexed_service(type, url, name, username, password, verbosity=Fal
             # Create a layer import job
             WebServiceHarvestLayersJob.objects.get_or_create(service=service)
         else:
-            _register_indexed_layers(service, wms=wms)
+            _register_indexed_layers(service, layers_to_register, wms=wms)
             print("_register_indexed_layers")
         message = "Service %s registered" % service.name
         return_dict = [{'status': 'ok',
@@ -583,7 +595,7 @@ def _register_indexed_service(type, url, name, username, password, verbosity=Fal
             status=400)
 
 
-def _register_indexed_layers(service, wms=None, verbosity=False):
+def _register_indexed_layers(service, layers_to_register, wms=None, verbosity=False):
     """
     Register layers for an indexed service (only WMS/OWS currently supported)
     """
@@ -591,7 +603,8 @@ def _register_indexed_layers(service, wms=None, verbosity=False):
     if re.match("WMS|OWS", service.type):
         wms = wms or WebMapService(service.base_url)
         count = 0
-        for layer in list(wms.contents):
+        #for layer in list(wms.contents):
+        for layer in layers_to_register:
             print ("layer", layer)
             wms_layer = wms[layer]
             if wms_layer is None or wms_layer.name is None:
@@ -1307,6 +1320,7 @@ def create_arcgis_links(instance):
 def get_layers(request, template='layers/service_register.html'):
     context_dict = {}
     available_layers = []
+    existing_layers = []
     data_dict = json.loads(request.POST.get('json_data'))
     service_url = data_dict['service_url']
     wms = WebMapService(service_url)
@@ -1315,8 +1329,17 @@ def get_layers(request, template='layers/service_register.html'):
 
     for layer in list(wms.contents):
         available_layers.append(layer)
-        #print ("layer", layer)
+        # check if service exists, if exists check if layer exists and return a flag
+        try:
+            service_layer = ServiceLayer.objects.filter(typename=layer).exists()
+            if service_layer:
+                existing_layers.append(layer)
+                print ("true")
+        except:
+            print ("all good")
+            pass
 
     context_dict["layers"] = available_layers
+    context_dict["existing_layers"] = existing_layers
 
     return HttpResponse(json.dumps(context_dict), mimetype="application/json")

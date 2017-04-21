@@ -35,11 +35,11 @@
   /*Filter END*/
 
   .table-widthB{
-  width: 48%;
+  width: 98%;
   }
 
   .table-widthA{
-  width: 49.8%;
+  width: 98%;
   }
 
   .bg{
@@ -167,26 +167,9 @@
                 <button type="button" class="btn btn-default btn-xs btn-filter"><span class="glyphicon glyphicon-filter"></span> Filter</button>
               </div>
           </div>
-          <table class="span12">
-            <table>
-              <tr class="filters">
-                <th style="width: 4.1%; width:50px;">
-                <div class="checkbox radio-margin">
-                  <label>
-                    <input type="checkbox" value="">
-                    <span class="cr"><i class="cr-icon glyphicon glyphicon-ok"></i></span>
-                  </label>
-                </div>
-                </th>
-                <th style="width: 98%">
-                  <input type="text" class="form-control" placeholder="Layer Name" disabled>
-                </th>
-              </tr>
-            </table>
-            <div class="bg tablescroll">
-              <table id="available_layers" class="table table-bordered table-striped"></table>
-            </div>
-          </table>
+          <div class="bg tablescroll">
+            <table id="available_layers" class="table table-bordered table-striped" style="cursor: pointer;"></table>
+          </div>
         </div>
       </div>
     </div>
@@ -208,25 +191,47 @@
     $( document ).ready(function() {
         // functionality added to retrieve available layers
         $("#get_layers_button").click(function(e) {
+          layers_arr = [];
           $( "#available_layers" ).empty();
           var service_url = $('#id_url').val();
 
           whole_url = "{% url 'get_layers' %}"
-
           $.ajax({
             type: "POST",
             url: whole_url,
             data: { json_data: JSON.stringify({ service_url: service_url }) },
             success: function(data) {
               available_layers = data['layers'];
+              existing_layers = data['existing_layers'];
               for (i = 0; i < available_layers.length; i++) {
-                $( "#available_layers" ).append('<tr><td style="width: 4.1%; width:50px;"><div class="checkbox radio-margin"><label><input type="checkbox" value=""><span class="cr"><i class="cr-icon glyphicon glyphicon-ok"></i></span></label></div></th><td style="width: 99.8%">' + available_layers[i] + '</th></tr>');
+                if ($.inArray(available_layers[i], existing_layers) != -1){
+                  $( "#available_layers" ).append('<tr><td style="width: 99.8%; background-color:#70a96b" class="chosen">' + available_layers[i] + '</tr>');
+                } else {
+                  $( "#available_layers" ).append('<tr><td style="width: 99.8%; background-color:#d25b5b">' + available_layers[i] + '</tr>');
+                }
+
               }
             },
             error: function(data) {
             },
           });
         });
+
+
+        // create list of checked layers
+        $( "table" ).delegate( "td", "click", function() {
+          if ($(this).hasClass("chosen")){
+            $(this).toggleClass("chosen");
+            $(this).css("background-color", "#d25b5b");
+            layers_arr.splice( $.inArray($(this).text(),layers_arr) ,1 );
+          } else {
+            $(this).toggleClass("chosen");
+            $(this).css("background-color", "#70a96b");
+            layers_arr.push($(this).text());
+          }
+
+        });
+
 
         $("#service_register_form").submit(function(e) {
             var service_name_regexp = new RegExp('^[a-zA-Z]+[a-zA-Z0-9-_\.]*$');
@@ -245,11 +250,17 @@
             e.preventDefault();
             var url = $("#service_register_form").attr( "action" );
 
+            // prepare the layers to pass to the request
+            layers_sub_url = '';
+            for (i = 0; i < layers_arr.length; i++) {
+              layers_sub_url = layers_sub_url + '&layer' + i + '=' + layers_arr[i]
+            }
+
             $.ajax({
                 type: "POST",
                 url: url,
                 dataType: "json",
-                data: $("#service_register_form").serialize() + "&par1=1&par2=2&par3=232", // serializes the form's elements.
+                data: $("#service_register_form").serialize() + layers_sub_url, // serializes the form's elements.
                 progress: function(jqXHR, progressEvent) {
                     if (progressEvent.lengthComputable) {
                         console.log("Importing service and layers - " + (Math.round(progressEvent.loaded / progressEvent.total * 100)) + "%");
