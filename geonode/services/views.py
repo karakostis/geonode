@@ -677,6 +677,9 @@ def _register_indexed_layers(service, layers_to_register, wms=None, verbosity=Fa
                 service_layer.description = wms_layer.abstract
                 service_layer.styles = wms_layer.styles
                 service_layer.save()
+
+                create_indexed_links(saved_layer)
+
             count += 1
         message = "%d Layers Registered" % count
         return_dict = {'status': 'ok', 'msg': message}
@@ -1316,7 +1319,7 @@ def create_arcgis_links(instance):
     create_thumbnail(instance, thumbnail_remote_url)
 
 
-# functionality added to get layers from remote geoserver
+# d:functionality added to get layers from remote geoserver
 def get_layers(request, template='layers/service_register.html'):
     context_dict = {}
     available_layers = []
@@ -1324,9 +1327,6 @@ def get_layers(request, template='layers/service_register.html'):
     data_dict = json.loads(request.POST.get('json_data'))
     service_url = data_dict['service_url']
     wms = WebMapService(service_url)
-    #wms = wms or WebMapService(service_url)
-    #wms = WebMapService("http://training.geonode.wfp.org/geoserver/ows")
-
     for layer in list(wms.contents):
         available_layers.append(layer)
         # check if service exists, if exists check if layer exists and return a flag
@@ -1343,3 +1343,52 @@ def get_layers(request, template='layers/service_register.html'):
     context_dict["existing_layers"] = existing_layers
 
     return HttpResponse(json.dumps(context_dict), mimetype="application/json")
+
+# d:functionality to add links for the created remote layers
+def create_indexed_links(instance):
+
+    layer_name = instance.name
+    shp_link_main = instance.ows_url
+    shp_url_param = "?format_options=charset:UTF-8&typename={layer_name}&outputFormat=SHAPE-ZIP&version=1.0.0&service=WFS&request=GetFeature".format(** {
+        'layer_name': layer_name,
+    })
+    shp_link = shp_link_main + shp_url_param
+
+    Link.objects.get_or_create(resource=instance.get_self_resource(),
+                               url=shp_link,
+                               defaults=dict(
+        extension='zip',
+        name="Zipped Shapefile",
+        mime='SHAPE-ZIP',
+        link_type='data',
+    )
+    )
+
+    # Create legend.
+    legend_url_main = instance.ows_url
+    legend_url_main = legend_url_main.replace('ows', 'wms')
+    legend_url_param = "?request=GetLegendGraphic&format=image/png&WIDTH=20&HEIGHT=20&LAYER={layer_name}&legend_options=fontAntiAliasing:true;fontSize:12;forceLabels:on".format(** {
+        'layer_name': layer_name,
+    })
+    legend_url = legend_url_main + legend_url_param
+
+    Link.objects.get_or_create(resource=instance.get_self_resource(),
+                               url=legend_url,
+                               defaults=dict(
+        extension='json',
+        name=_('Legend'),
+        url=legend_url,
+        mime='application/json',
+        link_type='image',
+    )
+    )
+
+    # Create thumbnails.
+    bbox = urllib.pathname2url('%s,%s,%s,%s' % (instance.bbox_x0, instance.bbox_y0, instance.bbox_x1, instance.bbox_y1))
+    thumbnail_remote_url_main = instance.ows_url
+    thumbnail_remote_url_main = thumbnail_remote_url_main.replace('ows', 'wms')
+    thumbnail_remote_url_param = "/reflect?layers={layer_name}&width=200&height=150".format(** {
+        'layer_name': layer_name,
+    })
+    thumbnail_remote_url = thumbnail_remote_url_main + thumbnail_remote_url_param
+    create_thumbnail(instance, thumbnail_remote_url)
