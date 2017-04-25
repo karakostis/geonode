@@ -218,7 +218,7 @@
         });
 
 
-        // create list of checked layers
+        // d: create list of checked layers
         $( "table" ).delegate( "td", "click", function() {
           if ($(this).hasClass("chosen")){
             $(this).toggleClass("chosen");
@@ -240,7 +240,6 @@
                 $("#submit_button").prop("disabled",false);
                 return false;
             }
-
             $("#responseDiv").html("Importing service, please wait...").show();
             $(".result").remove();
             $("#tableDiv").hide();
@@ -273,6 +272,7 @@
                     $("#submit_button").prop("disabled",false);
                     $("#responseDiv").html("");
                     for (var item in data) {
+                        /*
                         if (data[item].available_layers) {
                             $.each(data[item].available_layers,function(i,row){
                                 $('<tr>').attr('id',i).
@@ -281,6 +281,7 @@
                             });
                             $("#tableDiv").show();
                         }
+                        */
                         if (data[item].service_id) {
                             $('<div>').attr("class", "result").append($('<a>').
                                             attr('href', "/services/" + data[item].service_id).

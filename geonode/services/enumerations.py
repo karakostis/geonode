@@ -21,13 +21,15 @@
 from django.utils.translation import ugettext_lazy as _
 
 SERVICE_TYPES = (
-    ('AUTO', _('Auto-detect')),
-    ('OWS', _('Paired WMS/WFS/WCS')),
-    ('WMS', _('Web Map Service')),
-    ('CSW', _('Catalogue Service')),
-    ('REST', _('ArcGIS REST Service')),
-    ('OGP', _('OpenGeoPortal')),
-    ('HGL', _('Harvard Geospatial Library')),
+    #('WMS', _('Web Map Service (non authenticated)')),
+    ('OWS', _('Web Feature Service (non authenticated)')),
+    #('AUTO', _('Auto-detect')),
+    #('OWS', _('Paired WMS/WFS/WCS')),
+    #('WMS', _('Web Map Service')),
+    #('CSW', _('Catalogue Service')),
+    #('REST', _('ArcGIS REST Service')),
+    #('OGP', _('OpenGeoPortal')),
+    #('HGL', _('Harvard Geospatial Library')),
 )
 
 SERVICE_METHODS = (

@@ -323,7 +323,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         'leaflet')
 
     if request.user.has_perm('download_resourcebase', layer.get_self_resource()):
-        if layer.storeType == 'dataStore' or layer.storeType == 'remoteStore': # assumes that all layers from remoteStore are vector layers
+        if layer.storeType == 'dataStore' or layer.storeType == 'remoteStore': # d: assumes that all layers from remoteStore are vector layers
             links = layer.link_set.download().filter(
                 name__in=settings.DOWNLOAD_FORMATS_VECTOR)
         else:
@@ -339,15 +339,10 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
     try:
         if 'geonode' in layers_names:
             workspace, name = layers_names.split(':', 1)
-            print ("tutto bene")
-            print ("workspace", workspace)
-            print ("layers_names", layers_names)
         else:
             #workspace = "arc"
             workspace = ""
             name = layers_names
-            print ("workspace", workspace)
-            print ("layers_names", layers_names)
     except:
         print "Can not identify workspace type and layername"
 
@@ -357,7 +352,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         # get type of layer (raster or vector)
         cat = Catalog(settings.OGC_SERVER['default']['LOCATION'] + "rest", settings.OGC_SERVER['default']['USER'], settings.OGC_SERVER['default']['PASSWORD'])
         resource = cat.get_resource(name, workspace=workspace)
-
+        print ("layertype", type(resource).__name__)
         if (type(resource).__name__ == 'Coverage'):
             context_dict["layer_type"] = "raster"
         elif (type(resource).__name__ == 'FeatureType'):
