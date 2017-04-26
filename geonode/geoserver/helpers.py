@@ -640,7 +640,7 @@ def set_attributes(layer, overwrite=False):
     elif layer.storeType in ["dataStore", "remoteStore", "wmsStore"]:
         dft_url = re.sub("\/wms\/?$",
                          "/",
-                         server_url) + "wfs?" + urllib.urlencode({"service": "wfs",
+                         server_url) + "/wfs?" + urllib.urlencode({"service": "wfs",
                                                                   "version": "1.0.0",
                                                                   "request": "DescribeFeatureType",
                                                                   "typename": layer.typename.encode('utf-8'),
