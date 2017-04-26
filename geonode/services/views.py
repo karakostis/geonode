@@ -598,7 +598,6 @@ def _register_indexed_layers(service, layers_to_register, wms=None, verbosity=Fa
         wms = wms or WebMapService(service.base_url)
         count = 0
         for layer in layers_to_register:
-            print ("layer", layer)
             wms_layer = wms[layer]
             if wms_layer is None or wms_layer.name is None:
                 continue

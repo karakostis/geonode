@@ -366,7 +366,7 @@ def gs_slurp(
        It returns a list of dictionaries with the name of the layer,
        the result of the operation and the errors and traceback if it failed.
     """
-    
+
     if console is None:
         console = open(os.devnull, 'w')
 
@@ -627,7 +627,6 @@ def set_attributes(layer, overwrite=False):
     """
     attribute_map = []
     server_url = ogc_server_settings.LOCATION if layer.storeType != "remoteStore" else layer.service.base_url
-
     if layer.storeType == "remoteStore" and layer.service.ptype == "gxp_arcrestsource":
         dft_url = server_url + ("%s?f=json" % layer.typename)
         try:
