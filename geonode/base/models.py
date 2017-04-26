@@ -724,13 +724,17 @@ def resourcebase_post_save(instance, *args, **kwargs):
         csw_insert_date=datetime.datetime.now())
     instance.set_missing_info()
 
+    #d: get the type of store for this layer. Delete links only if the storetype is dataStore"
+    from geonode.layers.models import Layer
+    storetype = Layer.objects.filter(resourcebase_ptr_id=instance.id).values_list('storeType')
+
     # we need to remove stale links
     for link in instance.link_set.all():
         if link.name == "External Document":
             if link.resource.doc_url != link.url:
                 link.delete()
         else:
-            if urlsplit(settings.SITEURL).hostname not in link.url:
+            if urlsplit(settings.SITEURL).hostname not in link.url and "dataStore" in storetype: #d: apply this only for dataStore
                 link.delete()
 
 
