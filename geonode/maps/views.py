@@ -115,7 +115,7 @@ def map_detail(request, mapid, snapshot=None, template='maps/map_detail.html'):
 
     config = json.dumps(config)
     layers = MapLayer.objects.filter(map=map_obj.id)
-    # workaround: use uncached version in the map_detail page. Replace all true values to false 
+    # workaround: use uncached version in the map_detail page. Replace all true values to false
     import string
     config = string.replace(config, '"tiled": true', '"tiled": false', 100)
     context_dict = {
@@ -309,7 +309,6 @@ def map_view(request, mapid, snapshot=None, template='maps/map_view.html'):
     the map with the given map ID.
     """
     map_obj = _resolve_map(request, mapid, 'base.view_resourcebase', _PERMISSION_MSG_VIEW)
-
     if snapshot is None:
         config = map_obj.viewer_json(request.user)
     else:

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.conf import settings
 
 import autocomplete_light
+#from autocomplete_light.contrib.taggit_field import TaggitField, TaggitWidget
 from autocomplete_light.contrib.taggit_field import TaggitField, TaggitWidget
 
 from modeltranslation.admin import TranslationAdmin
