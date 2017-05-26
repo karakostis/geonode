@@ -281,7 +281,7 @@ class GXPMapBase(object):
 
         # adding remote services sources
         from geonode.services.models import Service
-        index = int(max(sources.keys()))
+        index = int(max(sources.keys())) if len(sources.keys()) > 0 else 0
         for service in Service.objects.all():
             remote_source = {
                 'url': service.base_url,
