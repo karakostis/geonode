@@ -171,10 +171,29 @@ def layer_style_manage(request, layername):
                 logger.warn(
                     'Unable to set the default style.  Ensure Geoserver is running and that this layer exists.')
 
+
+            # d: get geometry of layer based on style - not the best way to do it
+            layer_current_style = cat.get_style(str(layer.default_style))
+            current_style = layer_current_style.sld_body
+            if 'PolygonSymbolizer' in current_style:
+                layer_geom = 'polygon'
+            elif 'LineSymbolizer' in current_style:
+                layer_geom = 'line'
+            elif 'PointSymbolizer' in current_style:
+                layer_geom = 'point'
+
+
             all_available_gs_styles = cat.get_styles()
             gs_styles = []
             for style in all_available_gs_styles:
-                gs_styles.append((style.name, style.sld_title))
+                # d: show only styles with the same geometry as the layer
+                if str(style.sld_title) not in ('line', 'point', 'polygon', 'Polygon', 'Default Line', 'Default Point'):
+                    if 'PolygonSymbolizer' in style.sld_body and layer_geom == 'polygon':
+                        gs_styles.append((style.name, style.sld_title))
+                    elif 'LineSymbolizer' in style.sld_body and layer_geom == 'line':
+                        gs_styles.append((style.name, style.sld_title))
+                    elif 'PointSymbolizer' in style.sld_body and layer_geom == 'point':
+                        gs_styles.append((style.name, style.sld_title))
 
             current_layer_styles = layer.styles.all()
             layer_styles = []
