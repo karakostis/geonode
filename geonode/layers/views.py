@@ -505,7 +505,9 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
         new_poc = layer_form.cleaned_data['poc']
         new_author = layer_form.cleaned_data['metadata_author']
         new_keywords = layer_form.cleaned_data['keywords']
-
+        #d: keep consistency. have all the keywords wiht small characters
+        for i in xrange(len(new_keywords)):
+            new_keywords[i] = new_keywords[i].lower()
         if new_poc is None:
             if poc is None:
                 poc_form = ProfileForm(
