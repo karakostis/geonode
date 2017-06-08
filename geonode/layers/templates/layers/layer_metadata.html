@@ -124,5 +124,14 @@
 </div>
 {% endblock %}
 {% block extra_script %}
+  <script type="text/javascript">
+  $(document.body).on("click", "#id_resource-keywords",function(e){
+    if ($('#key_comment').length == 0) {
+      $( "<div class='alert alert-warning' id='key_comment'>The keyword has to describe the layer but it is not necessary to include information mentioned in the Title or the Regions sections. E.g. Do not include country names as keywords.</div>" ).insertBefore( "#id_resource-keywords" );
+    }
+
+  });
+
+  </script>
  {% include 'metadata_form_js.html' %}
-{% endblock %}
+{% endblock extra_script %}
