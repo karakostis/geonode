@@ -150,7 +150,7 @@
             zoom_to_box(map, [{{ resource.bbox_string }}]);
           {% endif %}
           */
-          //http://staging.geonode.wfp.org:80/geoserver/wms
+          //https://staging.geonode.wfp.org:80/geoserver/wms
           base_url = {{ url | safe }};
           context_path = 'wms/'
           url_string = base_url + context_path
@@ -353,7 +353,7 @@
             // url to be used when on staging/production
             var context_path = "geonode/ows"
             var url_string = base_url + context_path + L.Util.getParamString(parameters);
-            //var url_string = 'http://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
+            //var url_string = 'https://staging.geonode.wfp.org:80/cors/geoserver/geonode/ows' + L.Util.getParamString(parameters);
             var drawnItems = new L.FeatureGroup().addTo(map);
             if (layer_geom == 'Point'){
               var drawControl = new L.Control.Draw({

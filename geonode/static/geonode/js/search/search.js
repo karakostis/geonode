@@ -478,10 +478,10 @@
             stamen: {
               name: 'Toner Lite',
               type: 'xyz',
-              url: 'http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+              url: 'https://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
               layerOptions: {
                 subdomains: ['a', 'b', 'c'],
-                attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>',
+                attribution: 'Map tiles by <a href="https://stamen.com">Stamen Design</a>',
                 continuousWorld: true
               }
             }
