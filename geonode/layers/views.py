@@ -57,6 +57,7 @@ from geonode.layers.forms import LayerForm, LayerUploadForm, NewLayerUploadForm,
 from geonode.base.forms import CategoryForm
 from geonode.layers.models import Layer, Attribute, UploadSession
 from geonode.base.enumerations import CHARSETS
+from geonode.layers.enumerations import ATTRIBUTES_DESCRIPTION, ATTRIBUTES_LABEL
 from geonode.base.models import TopicCategory
 
 
@@ -589,7 +590,6 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
         layer_form.fields['metadata_author'].initial = metadata_author.id
         author_form = ProfileForm(prefix="author")
         author_form.hidden = True
-
     return render_to_response(template, RequestContext(request, {
         "layer": layer,
         "layer_form": layer_form,
@@ -597,6 +597,8 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
         "author_form": author_form,
         "attribute_form": attribute_form,
         "category_form": category_form,
+        "attribute_descriptions": ATTRIBUTES_DESCRIPTION,
+        "attribute_label": ATTRIBUTES_LABEL,
     }))
 
 

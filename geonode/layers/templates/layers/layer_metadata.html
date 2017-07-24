@@ -84,7 +84,10 @@
           <div class="col-md-12 grid-spacer">
             <h5>{% trans "Attributes" %}</h5>
             {{ attribute_form.management_form }}
-            <table class="table table-striped table-bordered table-condensed">
+            <button type="button" class="btn" id="label_auto_complete">Auto Complete Labels</button>
+            <button type="button" class="btn" id="descr_auto_complete">Auto Complete Descriptions</button>
+            </br></br>
+            <table class="table table-striped table-bordered table-condensed" id="attributes_tbl">
               <tr>
                 <th>{% trans "Attribute" %}</th>
                 <th>{% trans "Label" %}</th>
@@ -94,7 +97,7 @@
               {% for form in attribute_form.forms %}
               {% if form.attribute %}
               <tr>
-                <td><div style="display:none">{{form.id}}</div>{{form.attribute}}</td>
+                <td><div class="default_attr_name" style="display:none">{{form.id}}</div>{{form.attribute}}</td>
                 <td>{{form.attribute_label}}</td>
                 <td>{{form.description}}</td>
                 <td>{{form.display_order}}</td>
@@ -129,7 +132,30 @@
     if ($('#key_comment').length == 0) {
       $( "<div class='alert alert-warning' id='key_comment'>The keyword has to describe the layer but it is not necessary to include information mentioned in the Title or the Regions sections. E.g. Do not include country names as keywords.</div>" ).insertBefore( "#id_resource-keywords" );
     }
-
+  });
+  // auto complete for decsriptions of attributes based on enumerations file
+  $(document.body).on("click", "#descr_auto_complete",function(e){
+    attribute_descriptions = {{attribute_descriptions | safe }};
+    $("#attributes_tbl tr").each(function(){
+        var value = $(this).find("td input:nth-child(2)").val();
+        //for (var i = 0; i < attr_names.length; i++) {
+          if (value in attribute_descriptions){
+            description = attribute_descriptions[value]
+            console.log(description)
+            $(this).find('td:nth-child(3) input').val(description);
+          }
+    });
+  });
+  // auto complete for labels of attributes based on enumerations file
+  $(document.body).on("click", "#label_auto_complete",function(e){
+    attribute_label = {{attribute_label | safe }};
+    $("#attributes_tbl tr").each(function(){
+        var value = $(this).find("td input:nth-child(2)").val();
+          if (value in attribute_label){
+            description = attribute_label[value]
+            $(this).find('td:nth-child(2) input').val(description);
+          }
+    });
   });
 
   </script>
