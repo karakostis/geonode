@@ -1,4 +1,5 @@
 {% extends "layers/layer_base.html" %}
+
 {% load i18n %}
 {% load bootstrap_tags %}
 
@@ -18,6 +19,7 @@
         Editing details for {{ layer_title }}
       {% endblocktrans %}
     </p>
+
     <form class="form-horizontal" action="{% url "layer_metadata" layer.service_typename %}" method="POST">
       {% if layer.metadata_uploaded %}
     	<p class="bg-warning">{% blocktrans %}Note: this layer's orginal metadata was populated by importing a metadata XML file.
@@ -54,7 +56,6 @@
           {% endif %}
           </ul>
         {% endif %}
-
         <div class="form-actions">
           <input type="submit" class="btn btn-primary" value="{% trans "Update" %}"/>
         </div>
@@ -62,7 +63,7 @@
 
         {% csrf_token %}
         <div class="col-md-6 form-controls">
-          {{ layer_form|as_bootstrap }}
+          {{ layer_form | as_bootstrap }}
         </div>
 
         <div class="row">
@@ -84,7 +85,10 @@
           <div class="col-md-12 grid-spacer">
             <h5>{% trans "Attributes" %}</h5>
             {{ attribute_form.management_form }}
-            <table class="table table-striped table-bordered table-condensed">
+            <button type="button" class="btn" id="label_auto_complete">Auto Complete Labels</button>
+            <button type="button" class="btn" id="descr_auto_complete">Auto Complete Descriptions</button>
+            </br></br>
+            <table class="table table-striped table-bordered table-condensed" id="attributes_tbl">
               <tr>
                 <th>{% trans "Attribute" %}</th>
                 <th>{% trans "Label" %}</th>
@@ -94,7 +98,7 @@
               {% for form in attribute_form.forms %}
               {% if form.attribute %}
               <tr>
-                <td><div style="display:none">{{form.id}}</div>{{form.attribute}}</td>
+                <td><div class="default_attr_name" style="display:none">{{form.id}}</div>{{form.attribute}}</td>
                 <td>{{form.attribute_label}}</td>
                 <td>{{form.description}}</td>
                 <td>{{form.display_order}}</td>
@@ -129,8 +133,90 @@
     if ($('#key_comment').length == 0) {
       $( "<div class='alert alert-warning' id='key_comment'>The keyword has to describe the layer but it is not necessary to include information mentioned in the Title or the Regions sections. E.g. Do not include country names as keywords.</div>" ).insertBefore( "#id_resource-keywords" );
     }
-
   });
+  // auto complete for decsriptions of attributes based on enumerations file
+  $(document.body).on("click", "#descr_auto_complete",function(e){
+    attribute_descriptions = {{attribute_descriptions | safe }};
+    $("#attributes_tbl tr").each(function(){
+        var value = $(this).find("td input:nth-child(2)").val();
+        //for (var i = 0; i < attr_names.length; i++) {
+          if (value in attribute_descriptions){
+            description = attribute_descriptions[value]
+            console.log(description)
+            $(this).find('td:nth-child(3) input').val(description);
+          }
+    });
+  });
+  // auto complete for labels of attributes based on enumerations file
+  $(document.body).on("click", "#label_auto_complete",function(e){
+    attribute_label = {{attribute_label | safe }};
+    $("#attributes_tbl tr").each(function(){
+        var value = $(this).find("td input:nth-child(2)").val();
+          if (value in attribute_label){
+            description = attribute_label[value]
+            $(this).find('td:nth-child(2) input').val(description);
+          }
+    });
+  });
+
+  $(function() {
+    $( '<div id="vmap" style="width: 375px; height: 275px;  margin-left: -15px;"></div></br>' ).insertBefore( $( "#div_id_resource-regions" ) );
+
+    $( '</br></br> <div class="panel-group" id="additional_metadata" style="width: 375px;"> <div class="panel panel-default"> <div class="panel-heading"> <h4 class="panel-title"> <a data-toggle="collapse" href="#collapse1">Advanced Metadata</a> </h4> </h4> </div> <div id="collapse1" class="panel-collapse collapse"> <div id="panel_body" class="panel-body"></div> </div>  </div> </div></br>' ).insertAfter( $( "#id_resource-metadata_author-wrapper" ) );
+
+    $("#div_id_resource-date_type, #div_id_resource-edition, #div_id_resource-purpose, #div_id_resource-maintenance_frequency, #div_id_resource-restriction_code_type, #div_id_resource-constraints_other, #div_id_resource-license, #div_id_resource-language, #div_id_resource-spatial_representation_type, #div_id_resource-temporal_extent_start, #div_id_resource-temporal_extent_end,  #div_id_resource-supplemental_information,  #div_id_resource-distribution_url, #div_id_resource-distribution_description, #div_id_resource-data_quality_statement, #div_id_resource-featured, #div_id_resource-is_published, #div_id_resource-thumbnail_url" ).detach().appendTo('#panel_body')
+
+    $('#vmap').vectorMap(
+    {
+      map: 'world_en',
+      backgroundColor: '#a5bfdd',
+      borderColor: '#818181',
+      borderOpacity: 0.25,
+      borderWidth: 1,
+      color: '#f4f3f0',
+      enableZoom: true,
+      hoverColor: '#c9dfaf',
+      hoverOpacity: null,
+      normalizeFunction: 'linear',
+      scaleColors: ['#b6d6ff', '#005ace'],
+      selectedColor: '#c9dfaf',
+      selectedRegions: null,
+      showTooltip: true,
+      onRegionClick: function(element, code, region)
+      {
+
+        if ($('#regions_comment').length !== 0) {
+          $("#regions_comment").remove();
+        }
+          var message = 'You clicked "'
+              + region
+              + '" which has the code: '
+              + code.toUpperCase();
+
+          // select country from the map and get the corresponding country on the menu
+          $("#id_resource-regions").val(code)
+          var indx = $("select#id_resource-regions").find(":selected").index();
+           $('#id_resource-regions').animate({
+              scrollTop: indx * 16
+           }, 500);
+
+          if ($('#regions_comment').length == 0) {
+            if(!isNaN(code)){
+              $( "<div class='alert alert-success' style='width: 375px; margin-left: -15px;' id='regions_comment'>Selected region " + region + "</div>" ).insertAfter( "#vmap" );
+            } else {
+              $( "<div class='alert alert-warning' style='width: 375px; margin-left: -15px;' id='regions_comment'>Selected region " + region + " was not found. Please use the list below to find it.</div>" ).insertAfter( "#vmap" );
+            }
+          }
+
+
+      }
+    });
+
+
+
+
+
+    });
 
   </script>
  {% include 'metadata_form_js.html' %}

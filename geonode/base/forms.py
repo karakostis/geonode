@@ -135,6 +135,7 @@ class ResourceBaseForm(TranslationModelForm):
                         'data-html': 'true'})
 
     class Meta:
+        fields = ['owner', 'title', 'date', 'abstract', 'keywords', 'regions', 'poc', 'metadata_author', 'date_type', 'edition', 'purpose', 'maintenance_frequency', 'restriction_code_type', 'constraints_other', 'license', 'language', 'spatial_representation_type', 'temporal_extent_start', 'temporal_extent_end', 'supplemental_information', 'distribution_url', 'distribution_description', 'data_quality_statement', 'featured', 'is_published', 'thumbnail_url', ]
         exclude = (
             'contacts',
             'name',
@@ -158,5 +159,5 @@ class ResourceBaseForm(TranslationModelForm):
             'thumbnail',
             'charset',
             'rating',
-            'detail_url'
+            'detail_url',
             )

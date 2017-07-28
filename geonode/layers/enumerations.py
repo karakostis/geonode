@@ -35,3 +35,56 @@ LAYER_ATTRIBUTE_NUMERIC_DATA_TYPES = [
     'xsd:unsignedShort',
     'xsd:unsignedByte',
 ]
+
+ATTRIBUTES_LABEL = {
+    # osm
+    'osm_id': 'osm id',
+    'sourceid': 'source',
+    'notes': 'notes',
+    'onme': 'official road name',
+    'rtenme': 'route name',
+    'ntlclass': '"highway" tag',
+    'fclass': 'functional class',
+    'numlanes': 'number of lanes',
+    'srftpe': 'surface type',
+    'srfcond': 'surface condition',
+    'isseasonal': 'seasonality',
+    'curntprac': 'current practicability',
+    'gnralspeed': 'general speed',
+    'rdwidthm': 'road width in meters',
+    'status': 'current road status',
+    'iselevated': 'Is the road a bridge?',
+    'iso3': 'iso3 country code',
+    'country': 'country name',
+    'last_update': 'last update date',
+    # admin boundaries
+    'adm0_code': 'adm0_code',
+    'adm0_name': 'adm0_name',
+    'adm1_code': 'adm1_code',
+    'adm1_name': 'adm1_name',
+    'adm2_code': 'adm2_code',
+    'adm2_name': 'adm2_name'
+}
+
+ATTRIBUTES_DESCRIPTION = {
+    # osm
+    'fclass': '1=Highway; 2=Primary; 3=Secondary; 4=Tertiary; 5=Residential; 6=Track/Trail; 7=Pathway',
+    'isseasonal': 'Is the road affected by season?; 1=Yes; 2=No; 0=Unspecified',
+    'curntprac': 'Non-motorized; Motorbike; 4WD<3.5mt; Light Truck(<10mt); Heavy Truck(<20mt); Truck + Trailer(>20mt); Unspecified',
+    'status': 'Open, Restricted, Closed',
+    'iselevated': 'yes=1, no=0',
+    'last_update': 'last update date',
+    # admin boundaries
+    'adm0_code': 'Code of country',
+    'adm0_name': 'Name of country',
+    'adm1_code': 'Code of region',
+    'adm1_name': 'Name of region',
+    'adm2_code': 'Code of province',
+    'adm2_name': 'Name of province',
+
+
+
+
+
+
+}

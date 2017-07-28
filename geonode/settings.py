@@ -779,17 +779,17 @@ LEAFLET_CONFIG = {
 
         # Stamen toner lite.
         ('Toner Lite',
-         'https://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
-         'Map tiles by <a href="https://stamen.com">Stamen Design</a>, \
-         <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
-         <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, \
-         <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
+         'http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+         'Map tiles by <a href="http://stamen.com">Stamen Design</a>, \
+         <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
+         <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, \
+         <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
          ('Watercolor',
-          'https://{s}.tile.stamen.com/watercolor/{z}/{x}/{y}.png',
-          'Map tiles by <a href="https://stamen.com">Stamen Design</a>, \
-          <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
-          <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, \
-          <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
+          'http://{s}.tile.stamen.com/watercolor/{z}/{x}/{y}.png',
+          'Map tiles by <a href="http://stamen.com">Stamen Design</a>, \
+          <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
+          <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, \
+          <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
     ],
     'PLUGINS': {
         'esri-leaflet': {
