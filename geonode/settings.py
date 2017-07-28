@@ -659,11 +659,11 @@ SOCIAL_ORIGINS = [{
     "css_class":"fb"
 }, {
     "label":"Twitter",
-    "url":"https://twitter.com/share?url={url}&hashtags={hashtags}",
+    "url":"http://twitter.com/share?url={url}&hashtags={hashtags}",
     "css_class":"tw"
 }, {
     "label":"Google +",
-    "url":"https://plus.google.com/share?url={url}",
+    "url":"http://plus.google.com/share?url={url}",
     "css_class":"gp"
 }]
 
@@ -671,7 +671,7 @@ SOCIAL_ORIGINS = [{
 #https://github.com/ckan/ckan/blob/2052628c4a450078d58fb26bd6dc239f3cc68c3e/ckan/logic/action/create.py#L43
 CKAN_ORIGINS = [{
     "label":"Humanitarian Data Exchange (HDX)",
-    "url":"https://data.hdx.rwlabs.org/dataset/new?title={name}&dataset_date={date}&notes={abstract}&caveats={caveats}",
+    "url":"http://data.hdx.rwlabs.org/dataset/new?title={name}&dataset_date={date}&notes={abstract}&caveats={caveats}",
     "css_class":"hdx"
 }]
 #SOCIAL_ORIGINS.extend(CKAN_ORIGINS)
@@ -779,17 +779,17 @@ LEAFLET_CONFIG = {
 
         # Stamen toner lite.
         ('Toner Lite',
-         'https://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
-         'Map tiles by <a href="https://stamen.com">Stamen Design</a>, \
-         <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
-         <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, \
-         <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
+         'http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+         'Map tiles by <a href="http://stamen.com">Stamen Design</a>, \
+         <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
+         <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, \
+         <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
          ('Watercolor',
-          'https://{s}.tile.stamen.com/watercolor/{z}/{x}/{y}.png',
-          'Map tiles by <a href="https://stamen.com">Stamen Design</a>, \
-          <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
-          <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, \
-          <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
+          'http://{s}.tile.stamen.com/watercolor/{z}/{x}/{y}.png',
+          'Map tiles by <a href="http://stamen.com">Stamen Design</a>, \
+          <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; \
+          <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, \
+          <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'),
     ],
     'PLUGINS': {
         'esri-leaflet': {
@@ -834,7 +834,7 @@ NLP_MODEL_PATH = "/opt/MITIE/MITIE-models/english/ner_model.dat"
 # Settings for Slack contrib app
 SLACK_ENABLED = False
 SLACK_WEBHOOK_URLS = [
-    "https://hooks.slack.com/services/T000/B000/XX"
+    "http://hooks.slack.com/services/T000/B000/XX"
 ]
 
 CACHES = {
