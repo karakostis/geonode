@@ -142,7 +142,6 @@
         //for (var i = 0; i < attr_names.length; i++) {
           if (value in attribute_descriptions){
             description = attribute_descriptions[value]
-            console.log(description)
             $(this).find('td:nth-child(3) input').val(description);
           }
     });
@@ -207,17 +206,9 @@
               $( "<div class='alert alert-warning' style='width: 375px; margin-left: -15px;' id='regions_comment'>Selected region " + region + " was not found. Please use the list below to find it.</div>" ).insertAfter( "#vmap" );
             }
           }
-
-
       }
     });
-
-
-
-
-
     });
-
   </script>
  {% include 'metadata_form_js.html' %}
 {% endblock extra_script %}

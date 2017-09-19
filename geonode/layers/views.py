@@ -502,7 +502,6 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
 
     if request.method == "POST" and layer_form.is_valid(
     ) and attribute_form.is_valid() and category_form.is_valid():
-        print ("dsfsdf")
         new_poc = layer_form.cleaned_data['poc']
         new_author = layer_form.cleaned_data['metadata_author']
         new_keywords = layer_form.cleaned_data['keywords']

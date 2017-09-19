@@ -25,7 +25,7 @@ from owslib.iso import MD_Metadata
 from pycsw import server
 from geonode.catalogue.backends.generic import CatalogueBackend as GenericCatalogueBackend
 from geonode.catalogue.backends.generic import METADATA_FORMATS
-from shapely.geometry.base import ReadingError
+#from shapely.geometry.base import ReadingError
 
 # pycsw settings that the user shouldn't have to worry about
 CONFIGURATION = {
