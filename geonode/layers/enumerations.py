@@ -52,7 +52,6 @@ ATTRIBUTES_LABEL = {
     'curntprac': 'current practicability',
     'gnralspeed': 'general speed',
     'rdwidthm': 'road width in meters',
-    'status': 'current road status',
     'iselevated': 'Is the road a bridge?',
     'iso3': 'iso3 country code',
     'country': 'country name',
@@ -71,7 +70,6 @@ ATTRIBUTES_DESCRIPTION = {
     'fclass': '1=Highway; 2=Primary; 3=Secondary; 4=Tertiary; 5=Residential; 6=Track/Trail; 7=Pathway',
     'isseasonal': 'Is the road affected by season?; 1=Yes; 2=No; 0=Unspecified',
     'curntprac': 'Non-motorized; Motorbike; 4WD<3.5mt; Light Truck(<10mt); Heavy Truck(<20mt); Truck + Trailer(>20mt); Unspecified',
-    'status': 'Open, Restricted, Closed',
     'iselevated': 'yes=1, no=0',
     'last_update': 'last update date',
     # admin boundaries
