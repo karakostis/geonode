@@ -215,7 +215,13 @@ class Layer(ResourceBase):
         else:
             return "Unamed Layer"
 
+    def __unicode__(self):
+        return self.name
+
     class Meta:
+
+        ordering = ('name',)
+        verbose_name_plural = 'Layers'
         # custom permissions,
         # change and delete are standard in django-guardian
         permissions = (
