@@ -194,6 +194,7 @@ def layer_style_manage(request, layername):
                         gs_styles.append((style.name, style.sld_title))
                     elif 'PointSymbolizer' in style.sld_body and layer_geom == 'point':
                         gs_styles.append((style.name, style.sld_title))
+            gs_styles.sort()
 
             current_layer_styles = layer.styles.all()
             layer_styles = []
