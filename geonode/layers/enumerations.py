@@ -72,6 +72,7 @@ ATTRIBUTES_DESCRIPTION = {
     'curntprac': 'Non-motorized; Motorbike; 4WD<3.5mt; Light Truck(<10mt); Heavy Truck(<20mt); Truck + Trailer(>20mt); Unspecified',
     'iselevated': 'yes=1, no=0',
     'last_update': 'last update date',
+    
     # admin boundaries
     'adm0_code': 'Code of country',
     'adm0_name': 'Name of country',
@@ -80,9 +81,54 @@ ATTRIBUTES_DESCRIPTION = {
     'adm2_code': 'Code of province',
     'adm2_name': 'Name of province',
 
-
-
-
+    # ica
+    'Adm1_NAME' : 'Province name',
+    'Adm2_NAME' : 'District name',
+    'NPGS' : 'Number of poor growing seasons',
+    'NPGS_Class' : 'Number of poor growing seasons, reclassified',
+    'PGSArea' : 'Drought affected area',
+    'PercDrArea' : 'Percentage of drought affected area',
+    'PercDrClas' : 'Percentage of drought affected area, reclassified',
+    'Dr_Risk' : 'Drought risk',
+    'Dr_Class' : 'Drought risk, reclassified',
+    'FLMaxFreq' : 'Maximum expected frequency of flood events',
+    'FLMaxClas' : 'Maximum expected frequency of flood events, reclassified',
+    'AreaFLRisk' : 'Flood affected area',
+    'PercFLRisk' : 'Percentage of flood affected area',
+    'PercFLClas' : 'Percentage of flood affected area, reclassified',
+    'FloodRisk' : 'Flood risk',
+    'FloodClass' : 'Flood risk, reclassified',
+    'LSMaxFreq' : 'Maximum expected frequency of landslide events',
+    'LSMaxClas' : 'Maximum expected frequency of landslide events, reclassified',
+    'AreaLSRisk' : 'Landslide affected area',
+    'PercLSRisk' : 'Percentage of landslide affected area',
+    'PercLSClas' : 'Percentage of landslide affected area, reclassified',
+    'LS_Risk' : 'Landslide risk',
+    'LS_Class' : 'Landslide risk, reclassified',
+    'FL_LS_Risk' : 'Rapid on-set shocks risk',
+    'FL_LS_Clas' : 'Rapid on-set shocks risk, reclassified',
+    'NS_Risk' : 'Natural shocks risk',
+    'NS_Class' : 'Natural shocks risk, reclassified',
+    'FI_Class' : 'Recurrence of food insecurity, reclassified',
+    'FI_Var' : 'Food insecurity variability',
+    'FI_Var_Cla' : 'Food insecurity variability, reclassified',
+    'LTPlanPop' : 'Estimated number of food insecure people for long-term planning',
+    'LTPlanPerc' : 'Percentage of food insecure people for long-term planning',
+    'AdInsecPop' : 'Estimated number of additional food insecure people in case of a major shock',
+    'ICA_Areas' : 'ICA Areas',
+    'ICA_Categ' : 'ICA Categories',
+    'PosMeanCha' : 'Positive ecological change',
+    'PosMeanCla' : 'Positive ecological change, reclassified',
+    'NegMeanCha' : 'Negative ecological change',
+    'NegMeanCla' : 'Negative ecological change, reclassified',
+    'ErosPr' : 'Percentage of surface prone to erosion',
+    'ErosPrClas' : 'Percentage of surface prone to erosion, reclassified',
+    'Stunt_Prev' : 'Prevalence of stunting in children below 5 years of age',
+    'Stunt_Clas' : 'Prevalence of stunting in children below 5 years of age, reclassified',
+    'Wast_Prev' : 'Prevalence of wasting in children below 5 years of age',
+    'Wast_Clas' : 'Prevalence of wasting in children below 5 years of age, reclassified',
+    'Und_Prev' : 'Prevalence of underweight in children below 5 years of age',
+    'Und_Clas' : 'Prevalence of underweight in children below 5 years of age, reclassified'
 
 
 }
