@@ -178,14 +178,13 @@ def layer_style_manage(request, layername):
             #d
             invalid = {'line', 'point', 'polygon', 'Polygon', 'Default Line', 'Default Point'}
             for style in all_available_gs_styles:
-                if str(style.sld_title) not in invalid:
-                    sld_title = style.name
-                    try:
-                        if style.sld_title:
-                            sld_title = style.sld_title
-                    except:
-                        pass
-                    gs_styles.append((style.name, sld_title))
+                sld_title = style.name
+                try:
+                    if style.sld_title and str(style.sld_title) not in invalid:
+                        sld_title = style.sld_title
+                except:
+                    pass
+                gs_styles.append((style.name, sld_title))
 
             current_layer_styles = layer.styles.all()
             layer_styles = []
