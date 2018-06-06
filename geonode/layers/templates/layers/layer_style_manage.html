@@ -41,8 +41,10 @@
         <h4>{% trans "Available styles" %}</h4>
         <p>{% trans "Click on an available style in the upper box to assign it to this layer. Selected styles appear in the lower box." %}</p>
       </div>
+
+      <!-- select2 search box -->
       <div class="col-md-9">
-        <select multiple="multiple" id="style-select" name="style-select">
+        <select multiple id="style-select" name="style-select" style="height:200px; width:350px;">
           {% for style in gs_styles %}
             {% if style in layer_styles %}
             <option value='{{ style.0 }}' selected>{{ style.1 }}</option>
@@ -52,7 +54,8 @@
           {% endfor %}
         </select>
         {% csrf_token %}
-        <input type="hidden" value="{{ layer.service_typename }}" />
+        <!-- <input type="checkbox" id="checkbox" >Select All
+        <input type="button" id="button" value="check Selected"> -->
       </div>
     </fieldset>
   </div>
@@ -85,5 +88,21 @@
     });
 
   });
+
+  // select2 search box
+  $("#style-select").select2();
+  $("#checkbox").click(function(){
+    if($("#checkbox").is(':checked') ){
+      $("#style-select > option").prop("selected","selected");
+      $("#style-select").trigger("change");
+    }else{
+      $("#style-select > option").removeAttr("selected");
+      $("#style-select").trigger("change");
+    }
+  });
+
+$("#button").click(function(){
+       alert($("#style-select").val());
+});
 </script>
 {% endblock %}
