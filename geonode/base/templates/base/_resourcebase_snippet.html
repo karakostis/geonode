@@ -10,7 +10,7 @@
         {% endif %}{% verbatim %}
         <h4><a href="{{ item.detail_url }}">{{ item.title }}</a></h4>
         <p>{{ item.category__gn_description }} <span class="owner">by <a href="/people/profile/{{ item.owner__username }}">{{ item.owner__username }}</a></span></p>
-        <p class="abstract">{{ item.abstract }}</p>
+        <p class="abstract">{{ item.abstract | limitTo: 450 }} {{item.abstract.length < 450 ? '' : '...'}}</p>
         <p class="actions">
           <a href="{{ item.detail_url }}#info"><i class="fa fa-calendar-o"></i>{{ item.date|date:'d MMM y' }}</a> |
           <a href="{{ item.detail_url }}"><i class="fa fa-eye"></i>{{ item.popular_count }}</a> |
