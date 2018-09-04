@@ -112,7 +112,7 @@ setup(name='GeoNode',
         "django-downloadview==1.2",
         "django-tastypie==0.11.0",
         "django-polymorphic==0.5.6",
-        "django-leaflet==0.13.7",
+        "django-leaflet==0.23.0",
         "django-autocomplete-light==2.2.10",
         "django-modeltranslation==0.8",
 
