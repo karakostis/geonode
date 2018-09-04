@@ -19,9 +19,10 @@
 
 from django.conf.urls import patterns, url
 from django.views.generic import TemplateView
+from django.contrib.auth.decorators import login_required
 
 urlpatterns = patterns('geonode.people.views',
-                       url(r'^$', TemplateView.as_view(template_name='people/profile_list.html'),
+                       url(r'^$', login_required(TemplateView.as_view(template_name='people/profile_list.html')),
                            name='profile_browse'),
                        url(r"^edit/$", "profile_edit", name="profile_edit"),
                        url(r"^edit/(?P<username>[^/]*)$", "profile_edit", name="profile_edit"),
